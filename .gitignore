@@ -1,0 +1,22 @@
+# ─── 依赖与构建产物 ─────────────────────────────────────────────
+node_modules/
+lib/
+/dist/
+dist-exe/
+*.tsbuildinfo
+.__dsh_build_cache__/
+
+# ─── 运行时状态与数据 ───────────────────────────────────────────
+.storages/
+.sessions/
+examples/*/.sessions/
+examples/*/*.jsonl
+
+# ─── 编辑器、IDE 与系统文件 ─────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*~
