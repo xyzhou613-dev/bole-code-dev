@@ -110,6 +110,7 @@ it.each([
   ['ptc', en.presetPtcName, 'How tools are called', 'Check a set of configuration files'],
   ['minimal', en.presetMinimalName, 'What is included', 'Compare performance on a small bug fix'],
   ['cordis', en.presetCordisName, 'What you can create', 'Add a UI'],
+  ['rsi-infer', en.presetRsiInferName, 'Model-isolated experiences', 'Compare a persistent service task'],
 ])('opens both help sections for %s without changing the default', (id, name, heading, exampleTitle) => {
   const actions = view({ rows: [{ id, isDefault: false }] })
   const trigger = within(rowFor(id)).getByRole('button', { name: `${en.modeExplanation}: ${name}` })

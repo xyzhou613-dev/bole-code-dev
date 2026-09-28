@@ -1,0 +1,12 @@
+{
+  "en": {
+    "summary": "RSI-infer adds producer-owned Bole experience attribution to recorded user context. This acknowledgement covers the additive MessageSourceMap kind, not new event types or a new Session format.",
+    "compatibility": "The new bole-experience source is explicitly qualified with @persistenceAttribution. Existing source kinds, message roles, event envelopes and the Session header are unchanged. Native V4 readers preserve unknown source kinds and their JSON metadata; ordinary Session derivation retains the complete recorded message content without a Bole interpreter. Only this producer inspects its receipts for duplicate suppression and its own model-route checks. Readers without the plugin can read the log but do not provide RSI-infer policy. The host's before/after schema policies classify this addition as same-version; accepted records and format checkpoints must not be rewritten.",
+    "verification": "On 2026-09-28 the local full host passed 64 tests across the experience plugin, preset inventory, V4 message-source admission and JSONL native-source admission. The plugin teardown test serializes a real delivered receipt and restores its complete metadata and body through a detached Session without any producer interpreter. The source-admission tests preserve unknown attribution without a producer installed. The persistence checker classified all four affected source slots as attribution-kind-added with requiresVersionBump false. Live Qwen/Ornith calls and benchmark gains are not established by these checks. Integrators must run the persistence verifier against their own current host after generating this acknowledgement."
+  },
+  "zh": {
+    "summary": "RSI-infer 在持久化用户上下文中增加由 producer 管理的伯乐经验归属信息。本记录只确认 MessageSourceMap 来源类型的兼容扩展，不增加事件类型或提升 Session 格式。",
+    "compatibility": "新增 bole-experience 来源明确声明 @persistenceAttribution。原有来源类型、消息角色、事件信封和 Session header 不变。原生 V4 读者保留未知来源类型及其 JSON 元数据；普通 Session 派生无需伯乐解释器即可保留持久化消息的完整正文。只有本插件读取自己的收据来去重并校验自身模型路由。未加载插件的读者可以读取日志，但不提供 RSI-infer 策略。宿主前后 schema 策略将此扩展判为同版本兼容；不得改写已接受的历史记录或格式检查点。",
+    "verification": "2026-09-28 本地完整宿主在经验插件、预设清单、V4 消息来源准入和 JSONL 原生来源准入四个文件中通过 64 项测试。插件释放测试将真实投递收据序列化，并在不加载 producer 解释器的独立 Session 中恢复完整元数据与正文。来源准入测试验证未安装 producer 时保留未知归属信息。持久化检查器将四个受影响来源位置均判为 attribution-kind-added，requiresVersionBump 为 false。这些检查不能证明 Qwen/Ornith 真实调用或评测提分。集成者在生成本记录后仍须对自己的当前宿主运行持久化验证。"
+  }
+}

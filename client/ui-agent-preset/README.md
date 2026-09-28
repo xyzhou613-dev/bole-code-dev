@@ -31,6 +31,8 @@ The “Choose a mode for new tasks” switch controls whether the saved user def
 
 Known shipped presets offer mode details and usage examples in a read-only dialog. Its tabs preserve each page's scroll position; closing returns focus to the opening action. Help does not change the new-task default. The default badge replaces the card's group badge, and the preset id appears beside the title. Guide copy and examples belong to this package.
 
+RSI-infer appears as a fifth built-in mode. Standard excludes accumulated Bole experiences while retaining ordinary Skills; RSI-infer adds the [model-isolated final experience plugin](../../skill/skill-bole-experience/README.md). Existing PTC, Minimal and Creator definitions are unchanged.
+
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 

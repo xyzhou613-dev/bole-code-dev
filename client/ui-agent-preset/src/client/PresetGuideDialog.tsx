@@ -21,6 +21,7 @@ const guides = new Map<string, PresetGuide>([
   ['ptc', { name: 'presetPtcName', intro: 'guidePtcIntro', explanation: 'guidePtcExplanation', usage: 'guidePtcUsage' }],
   ['minimal', { name: 'presetMinimalName', intro: 'guideMinimalIntro', explanation: 'guideMinimalExplanation', usage: 'guideMinimalUsage' }],
   ['cordis', { name: 'presetCordisName', intro: 'guideCordisIntro', explanation: 'guideCordisExplanation', usage: 'guideCordisUsage' }],
+  ['rsi-infer', { name: 'presetRsiInferName', intro: 'guideRsiInferIntro', explanation: 'guideRsiInferExplanation', usage: 'guideRsiInferUsage' }],
 ])
 
 /**

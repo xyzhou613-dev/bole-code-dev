@@ -1,0 +1,22 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "<bole-experience>\nUse this experience only when applicable: Use only when the task explicitly requires starting a server, hosting a local index, or leaving an API service running for later clients.\nFor a service needed after the agent finishes, a tool background-job ID, plain `command &amp;`, and PPID 1 alone do not prove persistence. Use a service supervisor if present; otherwise launch the foreground server executable in a separate session with all standard streams detached. Capture the launching shell's session ID, then from a fresh command check that the server is listening and its session ID differs from the launch shell's. If a detached launch fails, inspect its log and repair the launch; never fall back to a plain background job while claiming the service is durable. Finally exercise the exact client request and leave the verified listener running.\n</bole-experience>"
+    }
+  ],
+  "source": {
+    "kind": "bole-experience",
+    "form": "instructions",
+    "provider": "test-route",
+    "model": "qwen3.8-27b",
+    "bundleId": "qwen38-service-v3",
+    "deliveredMemoryIds": [
+      "persistent-service-handoff-v3"
+    ],
+    "bodySha256": "7e6a172a63b9e40de798f175698dcc761f969a52b742844fd307ef19708151d6",
+    "status": "delivered"
+  },
+  "role": "user",
+  "id": "experience-message"
+}

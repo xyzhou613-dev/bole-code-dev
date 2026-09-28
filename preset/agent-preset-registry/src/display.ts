@@ -13,6 +13,7 @@ export type BuiltInPresetCopyKey =
   | 'presetPtcName' | 'presetPtcDescription'
   | 'presetMinimalName' | 'presetMinimalDescription'
   | 'presetCordisName' | 'presetCordisDescription'
+  | 'presetRsiInferName' | 'presetRsiInferDescription'
 
 /** Preset roster fields needed to resolve display copy. */
 export interface PresetDisplaySource {
@@ -42,6 +43,7 @@ const BUILT_IN_PRESET_KEYS: Readonly<Partial<Record<string, PresetLocaleKeys>>> 
   ptc: { name: 'presetPtcName', description: 'presetPtcDescription' },
   minimal: { name: 'presetMinimalName', description: 'presetMinimalDescription' },
   cordis: { name: 'presetCordisName', description: 'presetCordisDescription' },
+  'rsi-infer': { name: 'presetRsiInferName', description: 'presetRsiInferDescription' },
 }
 
 /**

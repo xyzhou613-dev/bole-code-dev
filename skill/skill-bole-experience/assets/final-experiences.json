@@ -1,0 +1,46 @@
+[
+  {
+    "id": "qwen38-service-v3",
+    "models": ["qwen3.8-27b", "Qwen3.8-27B"],
+    "originModel": "qwen3.8-27b",
+    "originDeployment": "a100-gpu0-3-local",
+    "evaluation": {
+      "dataset": "terminal-bench-2.1",
+      "runId": "bole-acp-full-qwen38-gpu03-service-v3-treatment-20260924",
+      "passed": 63,
+      "total": 89,
+      "errors": 12
+    },
+    "skill": {
+      "id": "persistent-service-handoff-v3",
+      "name": "bole-qwen38-persistent-service-handoff-v3",
+      "title": "Verify that a required service outlives the tool session",
+      "description": "Tasks that explicitly require starting a server or leaving a service reachable for later clients after the agent finishes.",
+      "whenToUse": "Use only when the task explicitly requires starting a server, hosting a local index, or leaving an API service running for later clients.",
+      "body": "For a service needed after the agent finishes, a tool background-job ID, plain `command &`, and PPID 1 alone do not prove persistence. Use a service supervisor if present; otherwise launch the foreground server executable in a separate session with all standard streams detached. Capture the launching shell's session ID, then from a fresh command check that the server is listening and its session ID differs from the launch shell's. If a detached launch fails, inspect its log and repair the launch; never fall back to a plain background job while claiming the service is durable. Finally exercise the exact client request and leave the verified listener running.",
+      "sha256": "7e6a172a63b9e40de798f175698dcc761f969a52b742844fd307ef19708151d6"
+    }
+  },
+  {
+    "id": "ornith-v18",
+    "models": ["Ornith-1.5-35B-A3B", "ornith-1.5-35b-a3b"],
+    "originModel": "Ornith-1.5-35B-A3B",
+    "originDeployment": "ornith-a100-8x-tp",
+    "evaluation": {
+      "dataset": "terminal-bench-2.1",
+      "runId": "bole-acp-full-v18-max65k-exp/2026-09-13__23-51-35",
+      "passed": 66,
+      "total": 89,
+      "errors": 10
+    },
+    "skill": {
+      "id": "persistent-service-verifier-lifecycle-v1",
+      "name": "bole-ornith-persistent-service-verifier-lifecycle-v1",
+      "title": "Detach verifier-facing services from the agent job manager",
+      "description": "Tasks requiring a daemon, server, listener or other service to remain running after the agent exits.",
+      "whenToUse": "Use when a task requires a daemon, server, listener, or other background process to remain running after the agent exits.",
+      "body": "A process started through the bash tool's run_in_background job registry is owned by the agent session and may be stopped during session cleanup. If the final artifact is a live service that a verifier will probe after the agent exits, launch it from a foreground shell call as a detached OS session, for example with `nohup setsid <command> </dev/null >/tmp/<name>.log 2>&1 &`. Record its PID, then use a separate shell call to verify both the process and the externally visible port or protocol. Use managed background jobs only for temporary work that should end with the agent session.",
+      "sha256": "d262b5fa0a314ebb63e4d01f054a07761f4246ff62f7bae89a8353e3c05160e7"
+    }
+  }
+]

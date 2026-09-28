@@ -1,0 +1,22 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "<bole-experience>\nUse this experience only when applicable: Use when a task requires a daemon, server, listener, or other background process to remain running after the agent exits.\nA process started through the bash tool's run_in_background job registry is owned by the agent session and may be stopped during session cleanup. If the final artifact is a live service that a verifier will probe after the agent exits, launch it from a foreground shell call as a detached OS session, for example with `nohup setsid &lt;command&gt; &lt;/dev/null &gt;/tmp/&lt;name&gt;.log 2&gt;&amp;1 &amp;`. Record its PID, then use a separate shell call to verify both the process and the externally visible port or protocol. Use managed background jobs only for temporary work that should end with the agent session.\n</bole-experience>"
+    }
+  ],
+  "source": {
+    "kind": "bole-experience",
+    "form": "instructions",
+    "provider": "test-route",
+    "model": "Ornith-1.5-35B-A3B",
+    "bundleId": "ornith-v18",
+    "deliveredMemoryIds": [
+      "persistent-service-verifier-lifecycle-v1"
+    ],
+    "bodySha256": "d262b5fa0a314ebb63e4d01f054a07761f4246ff62f7bae89a8353e3c05160e7",
+    "status": "delivered"
+  },
+  "role": "user",
+  "id": "experience-message"
+}

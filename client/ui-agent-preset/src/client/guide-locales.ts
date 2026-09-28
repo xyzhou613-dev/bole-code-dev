@@ -1,5 +1,17 @@
 /** Curated help for shipped presets, kept separate from their short picker copy. */
 export const guideEn = {
+  guideRsiInferIntro: 'Choose RSI-infer for a new task to use approved, model-specific Bole experiences. Compare against a fresh Standard-mode task with the same model, input and workspace.',
+  guideRsiInferExplanation: [
+    '### Model-isolated experiences',
+    'RSI-infer keeps Standard tools and ordinary Skills. It adds only the final Qwen service v3 or Ornith V18 experience selected for the current exact model id. Applicable service-lifecycle requests receive the instructions automatically; the same experience is also available through the skill tool.',
+    '### Limits',
+    'This mode does not learn, promote experiences, change sampling or run extra review rounds. Unsupported models receive no Bole experience. Start a new task to change model routes; historical evaluation scores do not guarantee gains in this deployment.',
+  ].join('\n\n'),
+  guideRsiInferUsage: [
+    '### Compare a persistent service task',
+    '> Start the project’s API server, verify its client request, and leave it reachable after the task ends.',
+    'Run this task separately in Standard and RSI-infer from the same initial state. Inspect the recorded Bole experience receipt and deliveredMemoryIds, then compare the result and runtime.',
+  ].join('\n\n'),
   modeExplanation: 'Mode details',
   howToUse: 'How to use',
   guideSections: 'Guide sections',
@@ -78,6 +90,18 @@ export type PresetGuideKey = keyof typeof guideEn
 
 /** Simplified Chinese help. Examples describe suggested tasks, not recorded runs. */
 export const guideZh: Record<PresetGuideKey, string> = {
+  guideRsiInferIntro: '在新任务中选择 RSI-infer 使用已确认的模型专属伯乐经验。对照时另建标准模式任务，保持模型、输入和初始工作区一致。',
+  guideRsiInferExplanation: [
+    '### 模型隔离经验',
+    'RSI-infer 保留标准工具和普通 Skills，仅加载当前准确模型 ID 对应的 Qwen 服务经验 v3 或 Ornith V18。明确要求持久服务的任务会自动收到经验，也可通过 skill 工具加载同一内容。',
+    '### 使用限制',
+    '本模式不自动学习或晋升，不修改采样参数，不追加审查轮次。其他模型不加载伯乐经验。更换模型路由请新建任务；历史评测分数不保证当前部署提分。',
+  ].join('\n\n'),
+  guideRsiInferUsage: [
+    '### 对照持久服务任务',
+    '> 启动项目的 API 服务，验证客户端请求，并让服务在任务结束后继续可访问。',
+    '从相同初始状态分别在标准模式和 RSI-infer 中运行。核对会话中伯乐经验收据及 deliveredMemoryIds，再比较结果与耗时。',
+  ].join('\n\n'),
   modeExplanation: '模式说明',
   howToUse: '如何使用',
   guideSections: '帮助内容',
