@@ -184,6 +184,9 @@ export function apply(ctx: Context, config: Config): void {
     provider: string,
     profile: ResolvedPiAiProviderProfile,
   ): Promise<string | undefined> => {
+    // A literal inline key ships with the profile and bypasses the credential
+    // seam; prefer it when both are declared.
+    if (profile.apiKey !== undefined) return assertUsableApiKey(profile.apiKey, 'llm-pi-ai', 'apiKey')
     const ref = profile.apiKeyEnv
     // Only a profile that names no credential at all defers to pi-ai's
     // provider-native discovery. Once one is named, a miss must fail loud:

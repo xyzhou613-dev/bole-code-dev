@@ -7,8 +7,11 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-api-workspace-files/remote'
 import { failureLine } from '../failure-line.ts'
 import { documentTabInfoFactory } from '../document/contract.ts'
+import type { OfficeTextField } from '@deepseek-ai/dsh-office-to-pdf/types'
 import { en, zh, type OfficePreviewKey } from './locales.ts'
 import { OfficePreviewCache, type ReadOfficeBytes, type ReadOfficeDocument } from './cache.ts'
+import type { SessionFile } from '../rpc.ts'
+import type { RemoteFailure } from '@deepseek-ai/dsh-api-remotes/client'
 import { pdfBodyRegistration } from '../pdf/index.ts'
 import { LazyPdfBody } from '../pdf/LazyPdfBody.tsx'
 import { OfficeBody, type OfficeBodyInjected } from './OfficeBody.tsx'
@@ -38,6 +41,15 @@ export function apply(ctx: Context, config: Config['office']): void {
     return Promise.reject(new Error(t('unavailable')))
   }
   let read = unavailable
+  interface OfficeEditCalls {
+    readText: (file: SessionFile, signal: AbortSignal) => Promise<OfficeTextField>
+    saveText: (file: SessionFile, text: string, version: string, signal: AbortSignal) => Promise<string>
+  }
+  const unavailableEdit: OfficeEditCalls = {
+    readText: (_file, signal) => { signal.throwIfAborted(); return Promise.reject(new Error(t('editUnavailable'))) },
+    saveText: (_file, _text, _version, signal) => { signal.throwIfAborted(); return Promise.reject(new Error(t('editUnavailable'))) },
+  }
+  let edit = unavailableEdit
   ctx.effect(() => ctx.documentPreviews.register({
     id,
     extensions, binaryExtensions: extensions, priority: 'builtin',
@@ -61,6 +73,9 @@ export function apply(ctx: Context, config: Config['office']): void {
     inject: (sessionId, actions): OfficeBodyInjected => ({
       ...face(sessionId, actions),
       retainTab: (tabId, signal) => { retainTab(tabId, signal, actions.forget) },
+      loadText: (file, signal) => edit.readText(file, signal),
+      saveText: (file, text, version, signal) => edit.saveText(file, text, version, signal),
+      resetTab: (tab, revision) => { actions.reset(tab, revision) },
     }),
   }, OfficeBody)))
   const pdfPresentation = pdfBodyRegistration(ctx)
@@ -108,13 +123,34 @@ export function apply(ctx: Context, config: Config['office']): void {
       }
       return result
     }
+    const describeEditFailure = (error: RemoteFailure): Error => {
+      if (error.code !== 'document-edit/failed') return new Error(t('editUnavailable'), { cause: error })
+      const reason = (error as { details?: { reason?: string } }).details?.reason
+      return new Error(t(reason === undefined ? 'editSaveFailed' : editErrorKey(reason)), { cause: error })
+    }
+    edit = {
+      readText: async (file, signal) => {
+        signal.throwIfAborted()
+        const result = await scope.remote.officeToPdf.readText(file.sessionId, file.path, signal)
+        signal.throwIfAborted()
+        if (!result.ok) throw describeEditFailure(result.error)
+        return result.value
+      },
+      saveText: async (file, text, version, signal) => {
+        signal.throwIfAborted()
+        const result = await scope.remote.officeToPdf.saveText(file.sessionId, file.path, text, version, signal)
+        signal.throwIfAborted()
+        if (!result.ok) throw describeEditFailure(result.error)
+        return result.value.version
+      },
+    }
     scope.on('connection/reset', () => {
       const previous = cache
       cache = createCache()
       const closing = previous.dispose().finally(() => { retired.delete(closing) })
       retired.add(closing)
     })
-    scope.effect(() => async () => { read = unavailable; await Promise.all([...retired, cache.dispose()]) })
+    scope.effect(() => async () => { read = unavailable; edit = unavailableEdit; await Promise.all([...retired, cache.dispose()]) })
   })
 }
 
@@ -127,5 +163,15 @@ function conversionErrorKey(code: string): OfficePreviewKey {
     case 'busy': return 'busy'
     case 'source-changed': return 'changed'
     default: return 'failed'
+  }
+}
+
+function editErrorKey(code: string): OfficePreviewKey {
+  switch (code) {
+    case 'source-changed': return 'changed'
+    case 'invalid-document': return 'invalid'
+    case 'unsupported-format': return 'editUnavailable'
+    case 'unavailable': return 'editUnavailable'
+    default: return 'editSaveFailed'
   }
 }

@@ -36,9 +36,9 @@ dsh --profile web --no-open --port 8080
 
 启动后你会看到 `dsh web:` 行，其根 URL 携带新的进程 token。除非 `--no-open` 或 SSH 会话抑制，否则默认浏览器会打开该 URL、取得签名 cookie，再重定向到不含认证参数的同一目录。页面加载且你可以与 agent 对话，就说明成功了。两种可预期的失败：前端未构建时，启动会以构建提示停止（checkout 中运行 `pnpm run build`）；浏览器无法打开时，stderr 会打印不含凭据的诊断，但服务器会继续运行——请自行打开已打印的启动 URL。
 
-**设置 → 模型**显示 **DeepSeek**，使用 `DEEPSEEK_API_KEY`。默认模型为 `deepseek-official` / `deepseek-flash`（DeepSeek-V41-Flash）。[DeepSeek 插件](../../llm/llm-deepseek/README.zh.md#endpoint-and-wire-format)使用 Messages API。
+**设置 → 模型**显示 **Bole Model**。内置默认提供方为 `bole`，走 OpenAI Chat Completions 协议（`http://192.168.19.203:9001/v1`），凭据为内嵌占位密钥 `local`，默认模型为 `bole-model`。该路由由 [`dsh-llm-pi-ai`](../../llm/llm-pi-ai/README.md) 承载。
 
-已保存的模型选择覆盖组合默认值。设置卡接受兼容 Messages 的 API 地址与凭据引用。
+已保存的模型选择覆盖组合默认值。设置卡可添加额外 provider，并为默认 `bole` 路由替换内嵌密钥或切换模型。
 
 ### 配置
 

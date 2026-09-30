@@ -790,6 +790,16 @@ describe('provider profile lifecycle', () => {
     expect(server.headers[0]?.authorization).toBe('Bearer ambient-key')
   })
 
+  it('uses a literal inline apiKey and prefers it over a named apiKeyEnv', async () => {
+    // The profile ships a placeholder/fixed key inline; no credential seam or
+    // environment value is needed, and a named-but-unset env ref must not win.
+    vi.stubEnv('PI_CUSTOM_REF_KEY', '')
+    const server = await mockServer([{ events: textEvents }])
+    const ctx = await harness(server.url, { apiKey: 'local', apiKeyEnv: 'PI_CUSTOM_REF_KEY' })
+    await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
+    expect(server.headers[0]?.authorization).toBe('Bearer local')
+  })
+
   it('falls back to the ambient environment for apiKeyEnv without the credentials seam', async () => {
     vi.stubEnv('PI_CUSTOM_REF_KEY', 'custom-ref-key')
     const server = await mockServer([{ events: textEvents }])

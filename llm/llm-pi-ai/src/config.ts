@@ -92,6 +92,12 @@ export type {
 export interface PiAiProviderProfile {
   /** Credential reference (environment-variable name) resolved per request through `ctx.credentials`. */
   apiKeyEnv?: string
+  /**
+   * Literal API key resolved per request, bypassing the credential seam. Use
+   * for a placeholder or fixed gateway key a deployment wants to ship inline;
+   * a profile naming both prefers this over {@link apiKeyEnv}.
+   */
+  apiKey?: string
   /** Name shown by configuration surfaces; defaults to the route key. */
   displayName?: string
   /**
@@ -325,6 +331,7 @@ const modelOverride: z<PiAiModelOverride> = z.object(modelFields)
 
 const profile = z.object({
   apiKeyEnv: z.string().role('credential-ref'),
+  apiKey: z.string(),
   displayName: z.string(),
   api: z.union(supportedProtocols()),
   baseURL: z.string(),

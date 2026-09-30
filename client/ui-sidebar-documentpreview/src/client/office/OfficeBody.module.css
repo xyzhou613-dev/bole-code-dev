@@ -4,3 +4,44 @@
   height: 100%;
   min-height: 0;
 }
+
+.edit {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 8px;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.editToolbar {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+}
+
+.editError {
+  margin: 0;
+  padding: 0 8px;
+  color: var(--dsh-color-danger, #c6212f);
+  font-size: 12px;
+}
+
+.editTextarea {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  resize: none;
+  font: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  border: 1px solid var(--dsh-color-border, #d0d7de);
+  border-radius: 6px;
+  background: var(--dsh-color-bg, transparent);
+  color: var(--dsh-color-text, inherit);
+}

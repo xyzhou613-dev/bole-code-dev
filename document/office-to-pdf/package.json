@@ -41,7 +41,8 @@
     "lib/typert.host.js",
     "lib/typert.host.d.ts",
     "lib/typert.remote-client.js",
-    "lib/typert.remote-client.d.ts"
+    "lib/typert.remote-client.d.ts",
+    "assets/python/*.py"
   ],
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"
