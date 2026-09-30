@@ -50,9 +50,25 @@ export interface RenderedDocumentBytes extends WorkspaceFileBytes {
   readonly generation: OfficeToPdfGeneration
 }
 
+/** Editable .docx body text and the source version it was read from. */
+export interface OfficeTextField {
+  /** Body paragraphs joined by newlines; empty lines are empty paragraphs. */
+  readonly text: string
+  /** Source version the extracted text reflects; the write-back guard basis. */
+  readonly version: string
+}
+
+/** Successful .docx write-back and the version it produced. */
+export interface OfficeTextSaveResult {
+  /** Source version after the native write completed. */
+  readonly version: string
+}
+
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
     /** The source was authorized, but its conversion failed. */
     'document-render/failed': { readonly reason: OfficeToPdfErrorCode }
+    /** The source was authorized, but its text edit failed. */
+    'document-edit/failed': { readonly reason: OfficeToPdfErrorCode }
   }
 }

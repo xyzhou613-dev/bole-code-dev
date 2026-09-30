@@ -3,6 +3,7 @@ import type { BoundActions } from '@deepseek-ai/dsh-client-store'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { RemoteFailure } from '@deepseek-ai/dsh-api-remotes/client'
+import type { OfficeTextField } from '@deepseek-ai/dsh-office-to-pdf/types'
 import type { SessionFile } from '../rpc.ts'
 import type { ReadOfficeDocument } from './cache.ts'
 import type { OfficeStore } from './store.ts'
@@ -26,6 +27,32 @@ export interface OfficeLoadInjected {
     loaded: (version: string) => void,
     failed: () => void,
   ) => void
+}
+
+/** Inline .docx edit capabilities supplied by the Office body through Slot injection. */
+export interface OfficeEditInjected {
+  /**
+   * Extract one .docx body's editable text under its current source version.
+   * @param file - addressed Session and source path.
+   * @param signal - request lifetime, cancelled on replacement, unmount, or tab closure.
+   * @returns body text and the source version it reflects.
+   */
+  readonly loadText: (file: SessionFile, signal: AbortSignal) => Promise<OfficeTextField>
+  /**
+   * Write edited body text back to the .docx source.
+   * @param file - addressed Session and source path.
+   * @param text - new body paragraphs; blank lines stay empty paragraphs.
+   * @param version - source version the edited copy reflects; a mismatch refuses the write.
+   * @param signal - request lifetime, cancelled on unmount or tab closure.
+   * @returns the source version after the write.
+   */
+  readonly saveText: (file: SessionFile, text: string, version: string, signal: AbortSignal) => Promise<string>
+  /**
+   * Clear a tab's settled preview so the body reloads the source from disk.
+   * @param tab - owning tab.
+   * @param revision - revision to reload.
+   */
+  readonly resetTab: (tab: TabId, revision: number) => void
 }
 
 /**

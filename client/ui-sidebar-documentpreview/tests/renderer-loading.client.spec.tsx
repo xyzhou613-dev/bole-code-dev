@@ -5,7 +5,10 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest'
 import { makeTranslate, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { OwnerOf } from '@deepseek-ai/dsh-client-ui-slots'
+import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { OfficeToPdfGeneration } from '@deepseek-ai/dsh-office-to-pdf/types'
+import type { OfficeTextField } from '@deepseek-ai/dsh-office-to-pdf/types'
+import type { SessionFile } from '../src/client/rpc.ts'
 import type { DocumentPreviewDefinition } from '../src/client/document/registry.ts'
 import type { DocumentContent } from '../src/client/document/contract.ts'
 import { TextPreview, type TextPreviewProps } from '../src/client/TextPreview.tsx'
@@ -102,6 +105,11 @@ function setup() {
     return selector(useSyncExternalStore(subscribe, snapshot))
   }
   const injected = officeFace(read, error => error.message)(SESSION, office.actions)
+  const edit = {
+    loadText: () => Promise.reject(new Error(en.editUnavailable)),
+    saveText: () => Promise.reject(new Error(en.editUnavailable)),
+    resetTab: (tab: TabId, revision: number) => { office.actions.reset(tab, revision) },
+  } as const
   let request: Extract<DocumentContent, { kind: 'renderer' }> | undefined
   const slots: TextPreviewProps['renderSlot'] = (key: string, input: unknown, options?: { hookContext?: unknown }) => {
     if (key === 'sidebar.right.tab.document.action') {
@@ -114,7 +122,7 @@ function setup() {
     request = owner.content
     // The component fixture supplies the standard seats used by Office; the real slot binding is exercised by the browser scenario.
     const props = { ...h.props(), ...owner, useTabInfo: options?.hookContext, useStore: useOffice,
-      actions: office.actions, ...injected, retainTab,
+      actions: office.actions, ...injected, ...edit, retainTab,
       t: makeTranslate(en), renderSlot: (_name: string, child: { content: DocumentContent }) => (
         <p data-test-pdf>{child.content.kind === 'bytes' ? new TextDecoder().decode(child.content.data) : ''}</p>
       ),
@@ -132,6 +140,107 @@ function setup() {
   })
   return { h, office, pending, read, View, request: () => request! }
 }
+
+it('opens inline docx editing, loads the body text, and writes it back to refresh the source', async () => {
+  const h = setup()
+  const address = 'dsh-resource://file/session/s-1/work/report.docx'
+  const field = { text: 'first\nsecond', version: 'v1' }
+  const loadText = vi.fn<(file: SessionFile, signal: AbortSignal) => Promise<OfficeTextField>>().mockResolvedValue(field)
+  const saveText = vi.fn<(file: SessionFile, text: string, version: string, signal: AbortSignal) => Promise<string>>().mockResolvedValue('v2')
+  const resetTab = vi.fn<(tab: TabId, revision: number) => void>()
+  const subscribe = (listener: () => void) => h.office.subscribe(listener)
+  const snapshot = () => h.office.getSnapshot()
+  act(() => { h.office.actions.complete(TAB_ID, 1, { absolutePath: '/host/report.docx', version: 'v1', data: new Uint8Array([37, 80, 68, 70]), offset: 0, eof: true, bytes: 4, generation: 'renderer' as OfficeToPdfGeneration, missingFonts: [] }) })
+  const props = {
+    ...h.h.props(), resourceAddress: address,
+    content: { kind: 'renderer', revision: 1, loaded: () => {}, failed: () => {}, reload: vi.fn() },
+    useStore: (selector: (state: OfficeState) => unknown) => selector(useSyncExternalStore(subscribe, snapshot)),
+    load: h.read, retainTab: () => {}, loadText, saveText, resetTab,
+    t: makeTranslate(en), renderSlot: () => null,
+  } as unknown as OfficeBodyProps
+  const view = render(<OfficeBody {...props} />)
+  expect(screen.getByRole('button', { name: en.edit })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: en.edit }))
+  expect(loadText).toHaveBeenCalledWith({ sessionId: SESSION, path: 'work/report.docx' }, expect.any(AbortSignal))
+  expect(loadText).toHaveBeenCalledOnce()
+  await act(async () => { await Promise.resolve() })
+  const textarea = screen.getByRole<HTMLTextAreaElement>('textbox')
+  expect(textarea.value).toBe('first\nsecond')
+  fireEvent.change(textarea, { target: { value: 'edited\nbody' } })
+  fireEvent.click(screen.getByRole('button', { name: en.save }))
+  expect(saveText).toHaveBeenCalledExactlyOnceWith({ sessionId: SESSION, path: 'work/report.docx' }, 'edited\nbody', 'v1', expect.any(AbortSignal))
+  await act(async () => { await Promise.resolve() })
+  expect(resetTab).toHaveBeenCalledExactlyOnceWith(TAB_ID, 1)
+  expect(screen.queryByRole('textbox')).toBeNull()
+  view.unmount()
+})
+
+/** Render the Office body's docx edit form over a resolved source, scripted with default mocks. */
+function editingFixture(overrides: {
+  loadText?: (file: SessionFile, signal: AbortSignal) => Promise<OfficeTextField>
+  saveText?: (file: SessionFile, text: string, version: string, signal: AbortSignal) => Promise<string>
+} = {}) {
+  const h = setup()
+  const loadText = overrides.loadText ?? vi.fn<(file: SessionFile, signal: AbortSignal) => Promise<OfficeTextField>>()
+    .mockResolvedValue({ text: 'first\nsecond', version: 'v1' })
+  const saveText = overrides.saveText ?? vi.fn<(file: SessionFile, text: string, version: string, signal: AbortSignal) => Promise<string>>()
+    .mockResolvedValue('v2')
+  const resetTab = vi.fn<(tab: TabId, revision: number) => void>()
+  const subscribe = (listener: () => void) => h.office.subscribe(listener)
+  const snapshot = () => h.office.getSnapshot()
+  act(() => { h.office.actions.complete(TAB_ID, 1, { absolutePath: '/host/report.docx', version: 'v1', data: new Uint8Array([37, 80, 68, 70]), offset: 0, eof: true, bytes: 4, generation: 'renderer' as OfficeToPdfGeneration, missingFonts: [] }) })
+  const props = {
+    ...h.h.props(), resourceAddress: 'dsh-resource://file/session/s-1/work/report.docx',
+    content: { kind: 'renderer', revision: 1, loaded: () => {}, failed: () => {}, reload: vi.fn() },
+    useStore: (selector: (state: OfficeState) => unknown) => selector(useSyncExternalStore(subscribe, snapshot)),
+    load: h.read, retainTab: () => {}, loadText, saveText, resetTab,
+    t: makeTranslate(en), renderSlot: () => null,
+  } as unknown as OfficeBodyProps
+  return { h, loadText, saveText, resetTab, props, open: () => { act(() => { fireEvent.click(screen.getByRole('button', { name: en.edit })) }) } }
+}
+
+it('cancels inline docx editing without writing back', async () => {
+  const f = editingFixture()
+  render(<OfficeBody {...f.props} />)
+  f.open()
+  await act(async () => { await Promise.resolve() })
+  fireEvent.click(screen.getByRole('button', { name: en.cancel }))
+  expect(screen.queryByRole('textbox')).toBeNull()
+  expect(screen.getByRole('button', { name: en.edit })).toBeTruthy()
+  expect(f.saveText).not.toHaveBeenCalled()
+  expect(f.resetTab).not.toHaveBeenCalled()
+  cleanup()
+})
+
+it('records a failure when the docx body text fails to load', async () => {
+  const f = editingFixture({
+    loadText: vi.fn().mockRejectedValue(new Error(en.editLoadFailed)),
+  })
+  render(<OfficeBody {...f.props} />)
+  f.open()
+  await act(async () => { await Promise.resolve() })
+  expect(f.loadText).toHaveBeenCalledOnce()
+  expect(screen.queryByRole('textbox')).toBeNull()
+  expect(screen.getByRole('button', { name: en.edit })).toBeTruthy()
+  cleanup()
+})
+
+it.each(['message', 'fallback'] as const)('shows a localized error and keeps editing when a save fails with %s', async (kind) => {
+  const f = editingFixture({
+    saveText: vi.fn().mockRejectedValue(kind === 'message' ? new Error(en.editSaveFailed) : 'raw write failure'),
+  })
+  render(<OfficeBody {...f.props} />)
+  f.open()
+  await act(async () => { await Promise.resolve() })
+  fireEvent.change(screen.getByRole<HTMLTextAreaElement>('textbox'), { target: { value: 'edited' } })
+  fireEvent.click(screen.getByRole('button', { name: en.save }))
+  await act(async () => { await Promise.resolve() })
+  expect(f.saveText).toHaveBeenCalledOnce()
+  expect(screen.getByText(en.editSaveFailed)).toBeTruthy()
+  expect(screen.getByRole('textbox')).toBeTruthy()
+  expect(f.resetTab).not.toHaveBeenCalled()
+  cleanup()
+})
 
 it('retains renderer content across remounts and waits for reload when automatic refresh is paused', async () => {
   const h = setup()
@@ -243,7 +352,8 @@ it('starts no conversion when a body receives ordinary shared content', () => {
   const props = { ...h.h.props(), content: { kind: 'bytes', data: new Uint8Array() },
     resourceAddress: ADDRESS, wrap: false, scrollportRef: vi.fn(),
     addResource: vi.fn(), setResources: vi.fn(),
-    useStore: () => undefined, actions: h.office.actions, load: vi.fn(), retainTab: vi.fn(), t: makeTranslate(en),
+    useStore: () => undefined, actions: h.office.actions, load: vi.fn(), retainTab: vi.fn(),
+    loadText: vi.fn(), saveText: vi.fn(), resetTab: vi.fn(), t: makeTranslate(en),
   } as OfficeBodyProps
   const view = render(<OfficeBody {...props} />)
   expect(view.container.childElementCount).toBe(0)

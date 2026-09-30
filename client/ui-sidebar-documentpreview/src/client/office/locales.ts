@@ -15,6 +15,13 @@ export const zh = {
   timeout: 'Office 转换超时，请重试。',
   busy: 'Office 预览任务较多，请稍后重试。',
   changed: '文件在读取时已更改，请重新打开预览。',
+  edit: '编辑',
+  cancel: '取消',
+  save: '保存',
+  saving: '正在保存…',
+  editUnavailable: '文本编辑不可用。请在运行伯乐智力工厂的主机上配置可用的 Python 解释器。',
+  editLoadFailed: '无法读取该文档的可编辑文本。',
+  editSaveFailed: '保存失败，文件未更改。',
 } satisfies Record<string, string>
 
 /** Office preview locale keys. */
@@ -37,4 +44,11 @@ export const en = {
   timeout: 'Office conversion timed out. Try again.',
   busy: 'Office preview is busy. Try again shortly.',
   changed: 'The file changed while being read. Reopen the preview.',
+  edit: 'Edit',
+  cancel: 'Cancel',
+  save: 'Save',
+  saving: 'Saving…',
+  editUnavailable: 'Inline editing is unavailable. Configure a usable Python interpreter on the host running Bole Code.',
+  editLoadFailed: 'Could not read editable text from this document.',
+  editSaveFailed: 'The save failed and the file was not changed.',
 } satisfies Record<OfficePreviewKey, string>

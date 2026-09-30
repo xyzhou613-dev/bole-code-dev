@@ -13,7 +13,7 @@ import { prepareImages } from '../src/images.ts'
 import { providerErrorDetail } from '../src/transport.ts'
 import { chunks, options, prepareExtensions, sse, textEvents, user, requestImageStore } from './helpers.ts'
 
-const model = 'deepseek-flash'
+const model = 'bole-model'
 const ref: ImageAttachmentRef = { attachmentId: AttachmentId(`sha256:${'a'.repeat(64)}`), width: 1, height: 1, mediaType: 'image/png', bytes: 3 }
 const second = { ...ref, attachmentId: AttachmentId(`sha256:${'c'.repeat(64)}`) }
 const version = (attachment: ImageAttachmentRef): RequestImageAttachment => ({

@@ -60,6 +60,8 @@ async function harness(config: Partial<Config['office']> = {}, missing?: 'remote
   const locale = { register: vi.fn(() => removeLocale), bind: (name: string) => name === 'sidebarDocumentPreview' ? makeTranslate(documentEn) : makeTranslate(en) }
   const render = vi.fn<ClientRemote['officeToPdf']['render']>().mockResolvedValue(converted)
   const rendererGeneration = vi.fn<ClientRemote['officeToPdf']['generation']>().mockResolvedValue({ ok: true, value: generation })
+  const readText = vi.fn<ClientRemote['officeToPdf']['readText']>().mockResolvedValue({ ok: true, value: { text: 'body', version: 'v1' } })
+  const saveText = vi.fn<ClientRemote['officeToPdf']['saveText']>().mockResolvedValue({ ok: true, value: { version: 'v2' } })
   const stat = vi.fn<ClientRemote['workspaceFiles']['stat']>().mockResolvedValue({ ok: true, value: source })
   const readBytes = vi.fn<ClientRemote['workspaceFiles']['readBytes']>().mockResolvedValue({ ok: true, value: { ...source, data: pdf.subarray(0, 1), eof: false } })
   const removeNotice = vi.fn()
@@ -69,9 +71,9 @@ async function harness(config: Partial<Config['office']> = {}, missing?: 'remote
   ctx.provide('slots', { inject: (_name: string, effect: () => () => void) => effect(), register } as never)
   ctx.provide('locale', locale as never)
   if (missing !== 'remote') {
-    ctx.provide('remote', { workspaceFiles: { stat, readBytes }, officeToPdf: { render, generation: rendererGeneration } } as never)
+    ctx.provide('remote', { workspaceFiles: { stat, readBytes }, officeToPdf: { render, generation: rendererGeneration, readText, saveText } } as never)
     if (missing !== 'files') ctx.provide('remote.workspaceFiles', { stat, readBytes } as never)
-    if (missing !== 'render') ctx.provide('remote.officeToPdf', { render, generation: rendererGeneration } as never)
+    if (missing !== 'render') ctx.provide('remote.officeToPdf', { render, generation: rendererGeneration, readText, saveText } as never)
   }
   const fiber = ctx.plugin({ apply: (scope: Context) => {
     apply(scope, Config({ office: config }).office)
@@ -82,7 +84,7 @@ async function harness(config: Partial<Config['office']> = {}, missing?: 'remote
   const injected = entry.inject(file.sessionId, instance.actions)
   const [read, describeFailure] = vi.mocked(officeFace).mock.calls.at(-1)!
   return { ctx, registry, instance, injected, describeFailure, recorded, locale, removeLocale, render, rendererGeneration,
-    stat, readBytes, register, removeNotice,
+    stat, readBytes, readText, saveText, register, removeNotice,
     read: (signal = new AbortController().signal, path = file.path) => read({ ...file, path }, signal),
     close: () => fiber.dispose(),
   }
@@ -277,4 +279,53 @@ it('joins a retired request during reset without retaining its late PDF in the n
     await resetting
     await closing
   } finally { completed.resolve(converted); await resetting; await h.close() }
+})
+
+it('loads encodable text and applies the returned source version to the store', async () => {
+  const h = await harness()
+  try {
+    await expect(h.injected.loadText(file, new AbortController().signal)).resolves.toEqual({ text: 'body', version: 'v1' })
+    expect(h.readText).toHaveBeenCalledExactlyOnceWith(file.sessionId, file.path, expect.any(AbortSignal))
+  } finally { await h.close() }
+})
+
+it('saves edited text back and resets the tab to reload the refreshed source', async () => {
+  const h = await harness()
+  const first = 'first' as TabId
+  try {
+    h.instance.actions.complete(first, 1, { absolutePath: '/a.docx', version: 'v1', offset: 0, eof: true, bytes: 4, data: pdf, generation, missingFonts: [] })
+    expect(h.instance.getSnapshot().byTab[first]).toBeDefined()
+    await expect(h.injected.saveText(file, 'edited', 'v1', new AbortController().signal)).resolves.toBe('v2')
+    expect(h.saveText).toHaveBeenCalledExactlyOnceWith(file.sessionId, file.path, 'edited', 'v1', expect.any(AbortSignal))
+    h.injected.resetTab(first, 2)
+    expect(h.instance.getSnapshot().byTab[first]).toEqual({ revision: 2 })
+  } finally { await h.close() }
+})
+
+it.each([
+  ['document-edit/failed', { reason: 'source-changed' }, 'changed'],
+  ['document-edit/failed', { reason: 'invalid-document' }, 'invalid'],
+  ['document-edit/failed', { reason: 'unsupported-format' }, 'editUnavailable'],
+  ['document-edit/failed', { reason: 'unavailable' }, 'editUnavailable'],
+  ['document-edit/failed', { reason: 'input-too-large' }, 'editSaveFailed'],
+  ['document-edit/failed', undefined, 'editSaveFailed'],
+  ['gateway/internal', undefined, 'editUnavailable'],
+] as const)('localizes %s edit failures as %s', async (code, details, key) => {
+  const h = await harness()
+  try {
+    const failure = new RemoteError(code, 'Edit failed.', details ? { reason: details.reason } : {}) as RemoteError<'document-edit/failed'> | RemoteError<'gateway/internal'>
+    h.readText.mockResolvedValueOnce({ ok: false, error: failure })
+    await expect(h.injected.loadText(file, new AbortController().signal)).rejects.toMatchObject({ message: en[key], cause: failure })
+    h.saveText.mockResolvedValueOnce({ ok: false, error: failure })
+    await expect(h.injected.saveText(file, 'edited', 'v1', new AbortController().signal)).rejects.toMatchObject({ message: en[key], cause: failure })
+  } finally { await h.close() }
+})
+
+it('rejects text editing as unavailable before detail services are wired', async () => {
+  const h = await harness(undefined, 'remote')
+  try {
+    await expect(h.injected.loadText(file, new AbortController().signal)).rejects.toMatchObject({ message: en.editUnavailable })
+    await expect(h.injected.saveText(file, 'edited', 'v1', new AbortController().signal)).rejects.toMatchObject({ message: en.editUnavailable })
+    expect(h.readText).not.toHaveBeenCalled()
+  } finally { await h.close() }
 })

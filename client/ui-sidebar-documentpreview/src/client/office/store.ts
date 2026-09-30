@@ -20,6 +20,7 @@ type OfficeActions = {
   complete: (state: OfficeState, tab: TabId, revision: number, file: OfficeFileBytes) => void
   failed: (state: OfficeState, tab: TabId, revision: number, failure: NonNullable<OfficeView['failure']>) => void
   forget: (state: OfficeState, tab: TabId) => void
+  reset: (state: OfficeState, tab: TabId, revision: number) => void
 }
 
 /**
@@ -44,6 +45,10 @@ export function createOfficeStore(): EngineStoreHandle<OfficeState, OfficeAction
       forget(state, tab: TabId) {
         const { [tab]: _closed, ...remaining } = state.byTab
         state.byTab = remaining
+      },
+      /** @param state - draft. @param tab - owning tab. @param revision - revision to reload. */
+      reset(state, tab: TabId, revision: number) {
+        state.byTab[tab] = { revision }
       },
     },
   })

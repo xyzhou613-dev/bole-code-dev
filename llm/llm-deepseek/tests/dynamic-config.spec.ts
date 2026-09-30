@@ -195,7 +195,7 @@ describe('request-level dynamic configuration', () => {
     const dir = await home()
     const { ctx } = await boot(dir, { baseURL: 'http://127.0.0.1:1' })
 
-    await expect(ctx.llm.listModels('deepseek-official')).resolves.toHaveLength(2)
+    await expect(ctx.llm.listModels('deepseek-official')).resolves.toHaveLength(1)
     await configurations.get(ctx)!.update({
       models: [{ id: 'settings-model', name: 'From Settings', inputModalities: ['text', 'image'] }],
     })
@@ -221,16 +221,16 @@ describe('request-level dynamic configuration', () => {
       source: { kind: 'test' },
     })]
 
-    await assemble(ctx, { model: 'deepseek-flash', messages })
+    await assemble(ctx, { model: 'bole-model', messages })
     await configurations.get(ctx)!.update({ maxRequestFilesBytes: 4, imageOffloadByteQuantum: 2 })
     // A request whose retained exact bytes exceed the tightened budget names the occurrences to offload.
-    const rejected = await assemble(ctx, { model: 'deepseek-flash', messages })
+    const rejected = await assemble(ctx, { model: 'bole-model', messages })
     expect(rejected.finish).toMatchObject({
       kind: 'error',
       failure: { code: 'IMAGE_OFFLOAD_REQUIRED', offloadImages: 1 },
     })
     await assemble(ctx, {
-      model: 'deepseek-flash',
+      model: 'bole-model',
       messages: [createUserMessage({
         content: [
           { type: 'image', attachment: IMAGE_REF, offloaded: true },
@@ -269,7 +269,7 @@ describe('request-level dynamic configuration', () => {
       maxDelayMs: 100,
       jitterRatio: 0.2,
     })
-    expect(ctx.llm.listProviders()).toEqual([{ id: 'deepseek-official', name: 'DeepSeek' }])
+    expect(ctx.llm.listProviders()).toEqual([{ id: 'deepseek-official', name: 'Bole Model' }])
     expect(observed).toEqual([['deepseek-official']])
   })
 

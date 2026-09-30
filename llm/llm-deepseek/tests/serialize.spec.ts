@@ -403,7 +403,7 @@ describe('Messages images', () => {
   const image: ImageBlock = { type: 'image', attachment: ref }
   const version: RequestImageAttachment = { attachment: ref, variantId: ImageVariantId(`sha256:${'b'.repeat(64)}`), mediaType: 'image/png', bytes: 3, data: Uint8Array.of(1, 2, 3), width: 1, height: 1, depth: 'uchar', space: 'srgb', hasAlpha: false }
   const access = () => ({ readonlyPath: '/workspace/image.png' })
-  const model = 'deepseek-flash'
+  const model = 'bole-model'
   // Only the read operation is consumed by image preparation; the transport is mocked, not durable content.
   const attachments = requestImageStore(async () => version)
   const signal = new AbortController().signal

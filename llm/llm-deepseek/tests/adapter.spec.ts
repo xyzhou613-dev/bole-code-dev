@@ -121,12 +121,12 @@ describe('direct Messages HTTP', () => {
       'user-agent': expect.stringContaining('deepseek-harness/') as string, 'x-deepseek-harness-user-id': 'test-user',
       'x-deepseek-harness-session-id': 'session-test', 'x-deepseek-harness-compact': '1',
     }, body: { thinking: { type: 'enabled' }, output_config: { effort: 'high' } } })
-    expect(llm.providerInfo('deepseek-official')).toEqual({ id: 'deepseek-official', name: 'DeepSeek' })
+    expect(llm.providerInfo('deepseek-official')).toEqual({ id: 'deepseek-official', name: 'Bole Model' })
     expect((await llm.listModels('deepseek-official')).map(model => model.id)).toEqual([
-      'deepseek-flash', 'deepseek-v4-pro',
+      'bole-model',
     ])
-    expect(await llm.resolveModel('deepseek-official', 'deepseek-flash')).toMatchObject({
-      name: 'DeepSeek-V41-Flash', inputModalities: ['text', 'image'], systemPromptUpdate: 'in-history',
+    expect(await llm.resolveModel('deepseek-official', 'bole-model')).toMatchObject({
+      name: 'Bole Model', inputModalities: ['text', 'image'], systemPromptUpdate: 'in-history',
     })
     expect(await llm.resolveModel('deepseek-official', MODEL)).toMatchObject({ id: MODEL })
     expect(llm.imageRequestPricing('deepseek-official', MODEL)).toBeDefined()
@@ -253,7 +253,7 @@ describe('Cordis provider composition', () => {
     vi.stubEnv('DEEPSEEK_API_KEY', 'test-key')
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(Messages, { baseURL: http.url })
-    const model = 'deepseek-flash'
+    const model = 'bole-model'
     const price = () => ctx.llm.imageRequestPricing('deepseek-official', model)!
     const dummy = { attachmentId: AttachmentId(`sha256:${'a'.repeat(64)}`), width: 1, height: 1, bytes: 3, mediaType: 'image/png' as const }
     expect(price().priceImages([{ type: 'image', attachment: dummy }])[0]?.text).toBeDefined()
@@ -305,7 +305,7 @@ describe('Cordis provider composition', () => {
   it.each([
     { model: MODEL, inHistory: false },
     { model: MODEL, inHistory: true },
-    { model: 'deepseek-flash', inHistory: true },
+    { model: 'bole-model', inHistory: true },
   ])('updates, clears and restores prompts across continued and resumed sessions, model=$model in-history=$inHistory', async ({ model, inHistory }) => {
     const { ctx, http } = await boot()
     if (inHistory && model === MODEL) await ctx.settings.update(Messages.name, { models: [{ id: model, systemPromptUpdate: 'in-history' }] })

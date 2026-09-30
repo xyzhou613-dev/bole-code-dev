@@ -36,9 +36,9 @@ dsh --profile web --no-open --port 8080
 
 After startup you see a `dsh web:` line whose root URL carries a fresh process token. Unless `--no-open` or an SSH session suppresses it, the default browser opens that URL, receives a signed cookie, and redirects to the same directory without the token. You know it worked when the page loads and you can chat with the agent. Two failures to expect: if the frontend is not built, startup stops with a build hint (`pnpm run build` in a checkout); if the browser cannot be opened, a credential-free diagnostic prints to stderr while the server keeps running — open the printed startup URL yourself.
 
-**Settings → Models** displays **DeepSeek**, using `DEEPSEEK_API_KEY`. The default is `deepseek-official` / `deepseek-flash` (DeepSeek-V41-Flash). The [DeepSeek plugin](../../llm/llm-deepseek/README.md#endpoint-and-wire-format) uses the Messages API.
+**Settings → Models** displays **Bole Model**. The built-in default provider is `bole`, speaking the OpenAI Chat Completions protocol (`http://192.168.19.203:9001/v1`) with an inline placeholder key `local` and the default model `bole-model`, served by [`dsh-llm-pi-ai`](../../llm/llm-pi-ai/README.md).
 
-Saved model selections override the composition default. The settings card accepts a Messages-compatible API address and a credential reference.
+Saved model selections override the composition default. The settings card can add extra providers and replace the inline key or switch the model for the default `bole` route.
 
 ### Configuration
 
