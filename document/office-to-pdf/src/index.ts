@@ -105,6 +105,11 @@ interface Slot {
   converter?: Promise<Converter>
 }
 
+/** A launched interpreter that started but exited nonzero; never falls back. */
+class ScriptExitFailure extends Error {
+  override readonly name = 'ScriptExitFailure'
+}
+
 /** A provider lifetime owns all converters, queued calls, and temporary files. */
 export class OfficeToPdf extends TypertRemoteService {
   static Config = Config
@@ -305,12 +310,16 @@ export class OfficeToPdf extends TypertRemoteService {
         child.on('close', (code) => {
           signal.removeEventListener('abort', onAbort)
           if (code === 0) resolve(Buffer.concat(stdout).toString('utf8'))
-          else reject(new Error(Buffer.concat(stderr).toString('utf8') || `python exited with code ${code}.`))
+          else reject(new ScriptExitFailure(Buffer.concat(stderr).toString('utf8') || `python exited with code ${code}.`))
         })
         child.stdin.end(input)
       })
     } catch (cause) {
       if (signal.aborted) throw cause
+      // The interpreter failed to start (e.g. not on PATH): try the next.
+      // A started script that exits nonzero is the real failure — surface it
+      // instead of mistaking it for a missing interpreter.
+      if (cause instanceof ScriptExitFailure) throw cause
       return this.launchWithFirstAvailable(args, input, signal, commands, index + 1)
     }
   }

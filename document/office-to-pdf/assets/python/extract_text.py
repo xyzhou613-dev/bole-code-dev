@@ -2,11 +2,13 @@
 """Extract the body paragraph text of a DOCX for an inline text editor.
 
 Reads INPUT.docx and writes one JSON object ``{"text": "..."}`` to stdout where
-``text`` is each body ``w:p`` paragraph's ``w:t`` text joined by newlines.
+``text`` is each body ``w:p`` paragraph's ``w:t`` text joined by newlines, in
+document order, so each line maps back to one paragraph for the paired writer.
 Headers, footers, footnotes, comments, and non-paragraph content (tables' cells,
-drawings) are ignored because the paired writer rebuilds the document solely
-from these body paragraphs. Exit 0 extracts text; 1 reports a corrupt or
-non-DOCX package; 2 reports a command-line error.
+drawings) are part of the document's structure rather than body flow; the paired
+writer edits the same paragraphs in place and keeps those structures untouched.
+Exit 0 extracts text; 1 reports a corrupt or non-DOCX package; 2 reports a
+command-line error.
 """
 
 from __future__ import annotations

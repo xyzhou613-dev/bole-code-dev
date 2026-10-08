@@ -182,13 +182,13 @@ it('falls back to the next interpreter when the first fails to start', async () 
   expect(childProcessMocks.spawn).toHaveBeenCalledTimes(2)
 })
 
-it('retries once an interpreter exits nonzero without stderr, then other available interpreters', async () => {
-  childProcessMocks.spawn
-    .mockImplementationOnce(() => { const child = new FakeChild(); enqueue(() => { child.exit(2) }); return child })
-    .mockImplementationOnce(() => { const child = new FakeChild(); enqueue(() => { child.fail(2, 'no module') }); return child })
+it('surfaces a script failure instead of falling back or reporting unavailable', async () => {
+  childProcessMocks.spawn.mockImplementationOnce(() => {
+    const child = new FakeChild(); enqueue(() => { child.fail(2, 'write_text.py crashed') }); return child
+  })
   await expect(ctx.officeToPdf.readText(scope, 'report.docx', new AbortController().signal))
-    .rejects.toMatchObject({ code: 'document-edit/failed', details: { reason: 'unavailable' } })
-  expect(childProcessMocks.spawn).toHaveBeenCalledTimes(2)
+    .rejects.toThrow('write_text.py crashed')
+  expect(childProcessMocks.spawn).toHaveBeenCalledTimes(1)
 })
 
 it('kills a running child and rethrows when the launch is cancelled mid-flight', async () => {
