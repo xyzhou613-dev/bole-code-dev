@@ -1,7 +1,7 @@
 /** Host LibreOffice kit provider with reusable converters and private disk input/output. */
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { extname, isAbsolute, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -296,7 +296,13 @@ export class OfficeToPdf extends TypertRemoteService {
     try {
       return await new Promise<string>((resolve, reject) => {
         signal.throwIfAborted()
-        const child = spawn(command, args, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
+        // Feed and capture UTF-8 regardless of the host locale: on a Chinese
+        // Windows a GBK-decoded stdin pipe would crash `write_text.py` on any
+        // non-ASCII edit text, and stdout must decode as UTF-8 below.
+        const child = spawn(command, args, {
+          windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
+        })
         const stdout: Buffer[] = []
         const stderr: Buffer[] = []
         child.stdout.on('data', (chunk: Buffer) => { stdout.push(chunk) })
@@ -388,16 +394,39 @@ export class OfficeToPdf extends TypertRemoteService {
       const info = await fs.stat(target, signal)
       if (info === undefined || info.type !== 'file') throw new OfficeToPdfError('source-changed', 'The source changed.')
       signal.throwIfAborted()
-      await this.runPython([join(pythonScripts, 'write_text.py'), fs.processPath(target)], text, signal)
+      const bytes = await fs.readBytes(target, signal, this.config.maxInputBytes).catch((cause: unknown) => {
+        if (typeof cause === 'object' && cause !== null && 'code' in cause && cause.code === 'FS_TOO_LARGE') {
+          throw new OfficeToPdfError('input-too-large', 'The source exceeds the reserved byte capacity.', { cause })
+        }
+        throw cause
+      })
       signal.throwIfAborted()
-      const after = await fs.stat(target, signal)
-      if (after === undefined || after.type !== 'file') throw new OfficeToPdfError('unavailable', 'The source disappeared after writing.')
-      this.ctx.emit('fs/observed', target, { kind: 'present', version: after.version }, this)
-      return { version: after.version }
+      // Rewrite an ASCII-only scratch copy so Python never sees a non-ASCII host
+      // path, then sync the edited bytes back over the original (Node handles
+      // non-ASCII paths natively).
+      const directory = await mkdtemp(join(tmpdir(), 'dsh-office-text-edit-'))
+      try {
+        const inputPath = join(directory, 'source.docx')
+        await writeFile(inputPath, bytes, { flag: 'wx', mode: 0o600, signal })
+        await this.runPython([join(pythonScripts, 'write_text.py'), inputPath], text, signal)
+        signal.throwIfAborted()
+        const edited = await readFile(inputPath, { signal })
+        await writeFile(fs.processPath(target), edited, { signal })
+        signal.throwIfAborted()
+        const after = await fs.stat(target, signal)
+        if (after === undefined || after.type !== 'file') throw new OfficeToPdfError('unavailable', 'The source disappeared after writing.')
+        this.ctx.emit('fs/observed', target, { kind: 'present', version: after.version }, this)
+        return { version: after.version }
+      } finally { await rm(directory, { recursive: true, force: true }) }
     } catch (cause) {
       if (signal.aborted) throw new RemoteError('gateway/cancelled', 'The document text write was cancelled.', {}, { cause })
       if (cause instanceof OfficeToPdfError) {
         throw new RemoteError('document-edit/failed', 'Office text write failed.', { reason: cause.code }, { cause })
+      }
+      if (cause instanceof ScriptExitFailure) {
+        // echo the real Python stderr so it is visible in the dev host terminal
+        process.stderr.write(`[office] saveText python failed: ${cause.message}\n`)
+        throw new RemoteError('document-edit/failed', 'Office text write failed.', { reason: 'failed' }, { cause })
       }
       throw cause
     }

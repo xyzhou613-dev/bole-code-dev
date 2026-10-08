@@ -1,5 +1,7 @@
 /** .docx text extraction and native write-back survive authorization, version, and interpreter failures. */
 import { EventEmitter } from 'node:events'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -97,7 +99,7 @@ it('classifies invalid extraction output instead of trusting interpreter bytes',
 
 it('writes body text back to the process path and reports the new version', async () => {
   const write = vi.spyOn(ctx.officeToPdf, 'runPython').mockResolvedValue('')
-  processPath.mockReturnValue('/host/report.docx')
+  processPath.mockReturnValue(join(tmpdir(), 'dsh-office-text-write.docx'))
   const watched = vi.fn()
   ctx.on('fs/observed', (observedTarget, observation) => { watched(observedTarget, observation) })
   fileInfo.mockReset()
@@ -105,9 +107,11 @@ it('writes body text back to the process path and reports the new version', asyn
   fileInfo.mockResolvedValueOnce({ ...sourceInfo, version: 'source-v2' as FsInfo['version'] })
   const result = await ctx.officeToPdf.saveText(scope, 'report.docx', 'edited\nbody', source.version, new AbortController().signal)
   expect(result).toEqual({ version: 'source-v2' })
-  expect(write).toHaveBeenCalledExactlyOnceWith([expect.stringContaining('write_text.py'), '/host/report.docx'], 'edited\nbody', expect.any(AbortSignal))
+  expect(write).toHaveBeenCalledExactlyOnceWith(
+    [expect.stringContaining('write_text.py'), expect.stringContaining('.docx')], 'edited\nbody', expect.any(AbortSignal))
   expect(watched).toHaveBeenCalledExactlyOnceWith(target, { kind: 'present', version: 'source-v2' })
-  expect(read).not.toHaveBeenCalled()
+  expect(read).toHaveBeenCalledOnce()
+  expect(authorize).not.toHaveBeenCalled()
 })
 
 it('refuses a save when the loaded version no longer matches the source', async () => {
@@ -191,6 +195,15 @@ it('surfaces a script failure instead of falling back or reporting unavailable',
   expect(childProcessMocks.spawn).toHaveBeenCalledTimes(1)
 })
 
+it('wraps a write script failure so the client surfaces its stderr instead of generic unavailable', async () => {
+  childProcessMocks.spawn.mockImplementationOnce(() => {
+    const child = new FakeChild(); enqueue(() => { child.fail(3, 'zipfile failed to open') }); return child
+  })
+  await expect(ctx.officeToPdf.saveText(scope, 'report.docx', 'text', source.version, new AbortController().signal))
+    .rejects.toMatchObject({ code: 'document-edit/failed', details: { reason: 'failed' } })
+  expect(childProcessMocks.spawn).toHaveBeenCalledTimes(1)
+})
+
 it('kills a running child and rethrows when the launch is cancelled mid-flight', async () => {
   const controller = new AbortController()
   let child: FakeChild | undefined
@@ -251,6 +264,7 @@ it('reports unavailable when the source disappears after writing', async () => {
   fileInfo.mockReset()
   fileInfo.mockResolvedValueOnce(sourceInfo)
   fileInfo.mockResolvedValueOnce(undefined)
+  processPath.mockReturnValue(join(tmpdir(), 'dsh-office-text-write.docx'))
   vi.spyOn(ctx.officeToPdf, 'runPython').mockResolvedValue('')
   await expect(ctx.officeToPdf.saveText(scope, 'report.docx', 'text', source.version, new AbortController().signal))
     .rejects.toMatchObject({ code: 'document-edit/failed', details: { reason: 'unavailable' } })
