@@ -9,6 +9,11 @@ import { presetDisplayText, type BuiltInPresetCopyKey } from '../src/display.ts'
 const t = (key: BuiltInPresetCopyKey): string => `t:${key}`
 
 describe('presetDisplayText', () => {
+  it('localizes the RSI-infer preset without treating it as a custom row', () => {
+    expect(presetDisplayText({ id: 'rsi-infer' }, t)).toEqual({
+      name: 't:presetRsiInferName', description: 't:presetRsiInferDescription',
+    })
+  })
   it('resolves a shipped preset through its dictionary keys', () => {
     expect(presetDisplayText({ id: 'standard' }, t)).toEqual({
       name: 't:presetStandardName',

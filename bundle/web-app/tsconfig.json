@@ -9,6 +9,9 @@
   ],
   "references": [
     {
+      "path": "../../skill/skill-bole-experience"
+    },
+    {
       "path": "../../../vendor/cordis"
     },
     {

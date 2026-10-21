@@ -31,6 +31,8 @@ kind: "package-reference"
 
 已知的内置预设提供只读的模式说明与使用示例对话框。各页签保留各自的滚动位置；关闭后焦点回到打开它的操作。帮助不会改变新任务默认值。默认徽标取代卡片的分组徽标，预设 id 显示在标题旁。指南文案与示例归本包所有。
 
+RSI-infer 作为第五种内置模式展示。标准模式不使用伯乐积累经验，保留普通 Skills；RSI-infer 增加[模型隔离的最终经验插件](../../skill/skill-bole-experience/README.zh.md)。原有 PTC、极简和创造模式定义不变。
+
 <a id="understand-the-implementation"></a>
 ## 理解实现
 

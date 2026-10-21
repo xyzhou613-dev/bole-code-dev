@@ -1,0 +1,30 @@
+# Builtin aliases resolve real package namespaces through Loader; only the LLM is scripted.
+- name: cordis:llm
+- name: cordis:session
+- name: cordis:projections
+- name: cordis:system-prompt
+  config:
+    personaPrefix: ''
+- name: cordis:tools
+- name: cordis:skills
+- name: cordis:agents
+- name: cordis:loop
+  config:
+    agents: []
+- name: cordis:presets
+  config:
+    default: standard
+- name: cordis:preset
+  config:
+    id: standard
+    plugins:
+      - name: cordis:tool-skill
+- name: cordis:preset
+  config:
+    id: rsi-infer
+    plugins:
+      - name: cordis:tool-skill
+      - id: bole-experience
+        name: cordis:bole-experience
+        config:
+          maxContextBytes: 4096
