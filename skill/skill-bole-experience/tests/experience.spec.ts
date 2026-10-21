@@ -198,7 +198,8 @@ describe('final Bole experience through real Loader composition', () => {
     expect(await ctx.skills.list({ scope: agent })).toEqual([])
     // Receipts are attribution, not a required replay projection. A reader
     // without the producer must retain the complete JSON and message body.
-    const receipt = agent.session.deriveMessages().find(message => message.source.kind === 'bole-experience')!
+    const receipt = agent.session.deriveMessages().find(message => message.source.kind === 'bole-experience')
+    if (receipt?.role !== 'user') throw new Error('expected a user bole-experience receipt')
     const archive = Session.create(agent.session.id)
     archive.append('user/message', receipt, { surfaceOp: 'append' })
     const seed = JSON.parse(JSON.stringify(archive.snapshotEvents())) as SessionEvent[]
