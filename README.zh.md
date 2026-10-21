@@ -119,14 +119,6 @@ git commit -m "..."
 git push origin develop
 ```
 
-合并进 `main`：
-
-1. 先更新 `develop` 到远端最新（`git checkout develop && git pull origin develop`）。
-2. 将 `develop` 合并到 `main`：`git checkout main && git pull origin main && git merge develop`。
-3. 本地解决冲突（如有）后推送：`git push origin main`。
-
-保护 `main`：在平台（GitLab：**Settings → Repository → Protected branches**）启用分支保护，使直接推送 `main` 被拒绝，改动只能通过上述合并流程进入。
-
 <a id="dependencies"></a>
 ## 依赖
 

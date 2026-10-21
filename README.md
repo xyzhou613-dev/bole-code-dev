@@ -119,13 +119,6 @@ git commit -m "..."
 git push origin develop
 ```
 
-Merging into `main`:
-
-1. Update `develop` to the latest remote state (`git checkout develop && git pull origin develop`).
-2. Merge `develop` into `main`: `git checkout main && git pull origin main && git merge develop`.
-3. Resolve conflicts locally if any, then push: `git push origin main`.
-
-Protect `main` in the platform (GitLab: **Settings → Repository → Protected branches**) so direct pushes to `main` are rejected and changes arrive only through the merge flow above.
 
 ## Dependencies
 
