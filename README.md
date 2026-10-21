@@ -15,6 +15,7 @@ The harness is assembled from npm packages under `packages/`, grouped by capabil
 
 - [Package groups](#package-groups)
 - [Release expectations](#release-expectations)
+- [Development workflow](#development-workflow)
 - [Dependencies](#dependencies)
 - [Package README contracts](#package-readme-contracts)
 - [Dev Note](#dev-note)
@@ -92,7 +93,40 @@ Most groups are product — stable API. The exceptions: `experimental/` publishe
 
 -----
 
-<a id="dependencies"></a>
+<a id="development-workflow"></a>
+## Development workflow
+
+This repository follows a `main` + `develop` branching model. `main` is the protected, stable branch; daily work happens on `develop`.
+
+- `main` — protected, stable. Direct pushes are disabled; it is updated only by merging approved changes from `develop` (or feature branches).
+- `develop` — the daily integration branch. All development starts from and lands here.
+
+Typical workflow for a developer:
+
+```sh
+# 1. Create or switch to develop
+git checkout develop
+
+# 2. Always pull the latest before working / committing
+git checkout develop
+git pull origin develop
+
+# 3. Do your work, then commit locally
+git add <files>
+git commit -m "..."
+
+# 4. Push your local commits to the remote develop
+git push origin develop
+```
+
+Merging into `main`:
+
+1. Update `develop` to the latest remote state (`git checkout develop && git pull origin develop`).
+2. Merge `develop` into `main`: `git checkout main && git pull origin main && git merge develop`.
+3. Resolve conflicts locally if any, then push: `git push origin main`.
+
+Protect `main` in the platform (GitLab: **Settings → Repository → Protected branches**) so direct pushes to `main` are rejected and changes arrive only through the merge flow above.
+
 ## Dependencies
 
 The dependency graph is generated: [docs/module-graph.md](../docs/module-graph.md) (`pnpm run gen-module-graph`, freshness-gated in CI).
