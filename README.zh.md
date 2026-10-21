@@ -15,6 +15,7 @@ harness 由 `packages/` 下的 npm 包组装而成，按能力系列分组：会
 
 - [包分组](#package-groups)
 - [发布预期](#release-expectations)
+- [开发规范](#开发规范)
 - [依赖](#dependencies)
 - [包 README 约定](#package-readme-contracts)
 - [开发备注](#dev-note)
@@ -91,6 +92,40 @@ harness 由 `packages/` 下的 npm 包组装而成，按能力系列分组：会
 大多数组属于产品组，提供稳定 API。例外：`experimental/` 发布时不提供稳定性或支持承诺，`test-support/`、`runtime-diagnostics/` 与 `util/` 是兼容性预期较低的支持组。
 
 -----
+
+<a id="开发规范"></a>
+## 开发规范
+
+本仓库采用 `main` + `develop` 的分支模型。`main` 为受保护、稳定分支，日常开发在 `develop` 上进行。
+
+- `main` — 受保护、稳定。禁止直接推送，只通过将 `develop`（或功能分支）合并进来更新。
+- `develop` — 日常集成开发分支，所有开发从这里开始并最终回到这里。
+
+开发者的常规流程：
+
+```sh
+# 1. 创建或切换到 develop
+git checkout develop
+
+# 2. 每次提交前先拉取最新
+git checkout develop
+git pull origin develop
+
+# 3. 完成开发，在本地提交
+git add <files>
+git commit -m "..."
+
+# 4. 将本地提交推送到远端 develop
+git push origin develop
+```
+
+合并进 `main`：
+
+1. 先更新 `develop` 到远端最新（`git checkout develop && git pull origin develop`）。
+2. 将 `develop` 合并到 `main`：`git checkout main && git pull origin main && git merge develop`。
+3. 本地解决冲突（如有）后推送：`git push origin main`。
+
+保护 `main`：在平台（GitLab：**Settings → Repository → Protected branches**）启用分支保护，使直接推送 `main` 被拒绝，改动只能通过上述合并流程进入。
 
 <a id="dependencies"></a>
 ## 依赖
