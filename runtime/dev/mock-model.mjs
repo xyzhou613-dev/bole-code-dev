@@ -52,7 +52,7 @@ function defaultReply(body) {
  * @param options - port hint and optional reply function.
  * @returns listening URL, recorded calls, and a close function.
  */
-export async function startMockModel({ port = 0, reply = defaultReply, delayMs = Number(process.env.MOCK_DELAY_MS ?? 0) } = {}) {
+export async function startMockModel({ port = 0, reply = defaultReply, delayMs = Number(process.env.MOCK_DELAY_MS ?? 0), httpError = Number(process.env.MOCK_HTTP_ERROR ?? 0) } = {}) {
   const calls = []
   const server = createServer((request, response) => {
     if (request.method !== 'POST') {
@@ -71,6 +71,11 @@ export async function startMockModel({ port = 0, reply = defaultReply, delayMs =
       }
       calls.push(body)
       if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs))
+      if (httpError > 0) {
+        response.writeHead(httpError, { 'content-type': 'application/json' })
+        response.end(JSON.stringify({ error: { message: 'mock upstream error', type: 'server_error' } }))
+        return
+      }
       const result = reply(body)
       const id = `chatcmpl-mock-${calls.length}`
       const model = body.model ?? 'qwen3.8-27b'

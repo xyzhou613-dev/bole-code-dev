@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "fixtures": [
+    {
+      "file": "cancel-mid-turn.jsonl",
+      "description": "Cancel while the model request is in flight; terminal aborted",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        10,
+        15,
+        11,
+        14,
+        12,
+        50
+      ],
+      "terminal": "aborted",
+      "timeoutMs": 60000
+    },
+    {
+      "file": "happy-tool.jsonl",
+      "description": "One successful tool call: task/step/model/assistant/tool/result/finish",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        10,
+        15,
+        11,
+        14,
+        22,
+        30,
+        31,
+        12,
+        50
+      ],
+      "terminal": "completed",
+      "timeoutMs": 60000
+    },
+    {
+      "file": "model-error.jsonl",
+      "description": "Model request fails after retries; terminal TASK_FAILED",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        10,
+        15,
+        11,
+        14,
+        12,
+        51
+      ],
+      "terminal": "failed",
+      "timeoutMs": 60000
+    },
+    {
+      "file": "text-turn.jsonl",
+      "description": "Plain text turn: task/step/model/assistant/finish",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        10,
+        15,
+        11,
+        14,
+        22,
+        12,
+        50
+      ],
+      "terminal": "completed",
+      "timeoutMs": 60000
+    }
+  ]
+}

@@ -27,6 +27,8 @@ import {
 import { SessionQueryError } from '@deepseek-ai/dsh-session-query'
 import type { JsonRpcTransportPeer, InitializeParams, InitializeResult, SessionEventNotification, SessionPromptParams, SessionPromptResult, SdkEncodedImageBlock } from '@deepseek-ai/dsh-sdk-protocol'
 import { BoleRpcError } from './transport.js'
+import { DeltaCoalescer } from './events/deltas.js'
+import { projectSessionEvent, rsiPayload, type ProjectionState, type ProjectedEvent, type RawSessionEvent } from './events/projection.js'
 
 interface SessionRecord {
   handle: AgentHandle
@@ -173,7 +175,10 @@ export class BoleSdkServer {
   private llmFiber: { dispose(): Promise<void> } | undefined
   private readonly sessions = new Map<string, SessionRecord>()
   private readonly sessionCreations = new Map<string, Promise<SessionRecord>>()
+  private readonly projections = new Map<string, ProjectionState>()
+  private readonly deltas = new DeltaCoalescer((delta) => { this.transport.notify('assistant.delta', delta) })
   private readonly disposers: (() => void)[] = []
+  private nextEventId = 1
   private shutdownTask: Promise<Record<string, never>> | undefined
   private shuttingDown = false
   private initialized = false
@@ -187,8 +192,18 @@ export class BoleSdkServer {
     private readonly transport: JsonRpcTransportPeer,
   ) {
     this.disposers.push(ctx.on('session/event', (session, event) => {
-      const payload: SessionEventNotification = { sessionId: String(session.id), event }
+      const sessionId = String(session.id)
+      const payload: SessionEventNotification = { sessionId, event }
       this.transport.notify('session.event', payload)
+      if (event.type === 'assistant/message' || event.type === 'turn/end') {
+        this.deltas.flushSession(sessionId)
+      }
+      if (this.sessions.has(sessionId)) this.project(sessionId, event)
+    }))
+    this.disposers.push(ctx.on('agent/assistant-stream', ({ agent, frame }) => {
+      const sessionId = String(agent.session.id)
+      if (!this.sessions.has(sessionId)) return
+      this.deltas.push(sessionId, frame)
     }))
     this.disposers.push(ctx.on('agent/status', ({ agent, status }) => {
       this.transport.notify('session.status', { sessionId: String(agent.session.id), status })
@@ -314,6 +329,13 @@ export class BoleSdkServer {
       cwd: snapshot.session.cwd ?? this.cwd,
     }
     this.sessions.set(sessionId, record)
+    this.projections.set(sessionId, {
+      turn: 0,
+      step: 0,
+      preset: record.preset,
+      tools: new Map(),
+    })
+    setImmediate(() => { this.emitRsi(sessionId, record) })
     return this.toResult(sessionId, record)
   }
 
@@ -442,6 +464,13 @@ export class BoleSdkServer {
     }
     const record: SessionRecord = { handle, preset: composition.agentPreset, cwd }
     this.sessions.set(sessionId, record)
+    this.projections.set(sessionId, {
+      turn: 0,
+      step: 0,
+      preset: composition.agentPreset,
+      tools: new Map(),
+    })
+    setImmediate(() => { this.emitRsi(sessionId, record) })
     return record
   }
 
@@ -494,6 +523,45 @@ export class BoleSdkServer {
     return this.defaultPreset ?? presets.defaultId
   }
 
+  /**
+   * Project one session event and publish it as `bole.event`.
+   * @param sessionId - owning session.
+   * @param event - raw session event.
+   */
+  private project(sessionId: string, event: { type: string; seq: number; time: number; data: unknown }): void {
+    const state = this.projections.get(sessionId)
+    if (state === undefined) return
+    const projected = projectSessionEvent(
+      event as unknown as RawSessionEvent,
+      state,
+      { sessionId, composed: this.ctx.get('agentPresets') !== undefined },
+    )
+    if (projected !== undefined) this.emit(sessionId, projected)
+  }
+
+  private emit(sessionId: string, projected: ProjectedEvent): void {
+    this.transport.notify('bole.event', {
+      sessionId,
+      event: { event_id: this.nextEventId++, session_id: sessionId, ...projected },
+    })
+  }
+
+  private emitRsi(sessionId: string, record: SessionRecord): void {
+    const state = this.projections.get(sessionId)
+    if (state === undefined) return
+    const composed = this.ctx.get('agentPresets') !== undefined
+    const payload = rsiPayload(state, { sessionId, composed }, 'session', 'session')
+    this.emit(sessionId, {
+      type: 15,
+      task: 0,
+      step: 0,
+      seq: 0,
+      ts_ms: Date.now(),
+      payload,
+    })
+    void record
+  }
+
   private toResult(sessionId: string, record: SessionRecord): SessionResult {
     return { sessionId, preset: record.preset ?? '', cwd: record.cwd }
   }
@@ -523,6 +591,9 @@ export class BoleSdkServer {
 
   private async performShutdown(): Promise<Record<string, never>> {
     this.shuttingDown = true
+    this.deltas.flushAll()
+    this.deltas.dispose()
+    this.projections.clear()
     await Promise.allSettled([...this.sessionCreations.values()])
     this.sessionCreations.clear()
     const records = [...this.sessions.values()]

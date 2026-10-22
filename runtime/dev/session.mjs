@@ -102,6 +102,13 @@ try {
   await client.request('session/prompt', { sessionId: 's-a2', contentBlocks: [{ type: 'text', text: 'hello' }] })
   const firstEnd = await waitEvent(client, 's-a2', 'turn/end')
   assert(firstEnd.data.reason.kind === 'completed', `first turn did not complete: ${JSON.stringify(firstEnd.data.reason)}`)
+  const projected = client.notifications
+    .filter((frame) => frame.method === 'bole.event' && frame.params?.sessionId === 's-a2')
+    .map((frame) => frame.params.event.type)
+  for (const type of [10, 15, 22, 50]) {
+    assert(projected.includes(type), `projected event stream is missing type ${type}: ${JSON.stringify(projected)}`)
+  }
+  assert(client.notifications.some((frame) => frame.method === 'assistant.delta' && frame.params?.sessionId === 's-a2'), 'no assistant.delta was emitted')
 
   const idleCancel = await failureOf(client.request('session/cancel', { sessionId: 's-a2' }))
   assert(idleCancel?.rpc?.data?.code === 'NO_ACTIVE_TASK', `idle cancel was not NO_ACTIVE_TASK: ${JSON.stringify(idleCancel?.rpc)}`)
@@ -132,7 +139,7 @@ try {
   assert(secondExit.code === 0, `second runtime exit ${String(secondExit.code)}\n${client.stderrTail()}`)
 
   console.log('PASS session/create + duplicate SESSION_EXISTS + preset/missing errors')
-  console.log('PASS prompt + completed turn')
+  console.log('PASS prompt + completed turn + projected events')
   console.log('PASS cancel: idle NO_ACTIVE_TASK, active turn aborted')
   console.log('PASS setPreset without plane: RSI_UNAVAILABLE')
   console.log('PASS resume after restart')

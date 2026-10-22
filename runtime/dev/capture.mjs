@@ -17,12 +17,13 @@ import { startMockModel } from './mock-model.mjs'
 const args = process.argv.slice(2)
 const scenarioFlag = args.indexOf('--scenario')
 const scenario = scenarioFlag === -1 ? 'capture' : args[scenarioFlag + 1] ?? 'capture'
+const cancel = args.includes('--cancel')
 const textFlag = args.indexOf('--text')
 const prompt = textFlag === -1 ? '用一句话介绍你自己' : args[textFlag + 1] ?? 'hello'
 
 const devArtifacts = join(devRoot, '.dev')
 await mkdir(devArtifacts, { recursive: true })
-const mock = await startMockModel()
+const mock = await startMockModel({ delayMs: cancel ? 1200 : 0 })
 const mockPatch = join(devArtifacts, 'mock.patch.yml')
 await writeFile(mockPatch, `- id: llm-pi-ai
   config:
@@ -48,6 +49,17 @@ try {
     sessionId: 's-001',
     contentBlocks: [{ type: 'text', text: prompt }],
   })
+  if (cancel) {
+    const started = Date.now()
+    while (Date.now() - started < 10_000
+      && !client.notifications.some((frame) => frame.method === 'bole.event'
+        && frame.params?.sessionId === 's-001'
+        && frame.params?.event?.type === 14)) {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    await client.request('session/cancel', { sessionId: 's-001' })
+  }
 
   const deadline = Date.now() + 30_000
   while (Date.now() < deadline) {

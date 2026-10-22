@@ -236,6 +236,19 @@ DoD：E2E <1 分钟；杀玩具 MCP 后工具错误可见且运行时继续；`-
 
 DoD：tarball 在干净树安装后 `initialize` 成功；版本输入齐；fixtures 可一键回放；G3 插件侧证据齐。
 
+### 实施进度（2026-10-22）
+
+| 项 | 状态 | 证据 |
+| --- | --- | --- |
+| P0 环境与脚手架 | 完成 | `runtime/dev` 冒烟、mock 模型、捕获脚本；0.1.7 运行时起停通过 |
+| A1 传输与骨架 | 完成 | 严格 transport 单测 5 个；真实 profile `initialize`/`shutdown`；stdout 全为 JSON-RPC |
+| A2 会话方法 | 完成 | create/duplicate/prompt/cancel/setPreset/resume 冒烟全绿；无 preset 面时 `PRESET_NOT_FOUND`/`RSI_UNAVAILABLE` |
+| A3 事件投影 | 核心完成 | 13 类可投影事件 + 增量合并；真实覆盖 10/11/12/14/15/22/30/31/50/51；4 个 fixtures |
+| A4 RSI/preset 面 | 未开始 | 等 A4 补丁行、经验包与收据三态 |
+| A5 轨迹 | 未开始 | — |
+
+fixtures：`happy-tool`、`text-turn`、`cancel-mid-turn`、`model-error`。`rsi-*`、`max-tokens`、`long-tool-output` 等 A4/A5 后再补。
+
 ## 五、周排期与门
 
 按每周约 3 个有效工作日估算（与 B 并行、含联调等待）；若全职投入可压到 3–4 周，但 G1/G2 仍按契约与 B 的节奏对齐。
