@@ -1,7 +1,7 @@
 # 伯乐智能体 SDK：项目实施方案
 
 用途：定义项目的形态、仓库结构、接口契约、分工与里程碑。所有实现决定以本文与《[决策记录](00-decisions.md)》为准。
-基线：harness `0.1.7-alpha.2`，仓库 `bole-code-dev`，分支 `docs/bole-sdk`，Windows x64 交付。2026-10-22 修订：RSI 改为 agent preset 切换（2.2），运行组合改为 preset 面 + 关外网面，事件模型补三层与 thinking 通道。
+基线：harness `0.1.7-alpha.2`，仓库 `bole-code-dev`，分支 `docs/bole-sdk`，Windows x64 交付（目标机 Windows 10 / 11）。2026-10-22 修订：RSI 改为 agent preset 切换（2.2），运行组合改为 preset 面 + 关外网面，事件模型补三层与 thinking 通道。
 
 ## 一、一句话
 
@@ -218,7 +218,7 @@ bole-agent-sdk-<版本>-win-x64/
 └── install.ps1  校验与安装
 ```
 
-硬性要求：解压即用、不写注册表、不需要管理员权限、目标机无 Node 与 VS 运行库（C 库用 `/MT` 静态运行库）、运行期无外网访问。
+硬性要求：解压即用、不写注册表、不需要管理员权限、目标机无 Node 与 VS 运行库（C 库用 `/MT` 静态运行库）、运行期无外网访问。目标系统只承诺 Windows 10 / 11（x64），不做更老系统兼容。
 
 经验包发布必须包含 `assets/final-experiences.json`；缺资产时插件启动校验会失败，离线包要在自检里覆盖这一条。
 
@@ -234,7 +234,7 @@ bole-agent-sdk-<版本>-win-x64/
 | 三层与 thinking | step 事件顺序、reasoning 增量与正文分流、最终正文以 `assistant/message` 为准 |
 | 集成 | 真运行时加玩具工具，Windows 上跑通全流程 |
 | 稳定性 | 杀工具进程、杀运行时、断网、连续多轮、长任务（界面示例） |
-| 验收演练 | 干净 Windows 虚拟机断网，按四条验收标准逐条过 |
+| 验收演练 | 干净 Windows 10 / 11 虚拟机断网，按四条验收标准逐条过 |
 
 ## 十、里程碑
 
