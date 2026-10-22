@@ -51,7 +51,19 @@ async function readJsonl(path) {
 
 const artifacts = join(devRoot, '.dev')
 await mkdir(artifacts, { recursive: true })
-const mock = await startMockModel()
+const home = await prepareHome('bole-trace-')
+const longFile = join(home, 'long.txt')
+await writeFile(longFile, 'x'.repeat(10_000))
+const mock = await startMockModel({
+  reply: (body) => {
+    const messages = Array.isArray(body.messages) ? body.messages : []
+    if (messages.at(-1)?.role === 'tool') return { text: 'tool result received' }
+    if (JSON.stringify(body).includes('read long')) {
+      return { toolCall: { name: 'bash', arguments: JSON.stringify({ command: `cat ${longFile}`, description: 'long output' }) } }
+    }
+    return { text: 'plain reply' }
+  },
+})
 const mockPatch = join(artifacts, 'trace-mock.patch.yml')
 await writeFile(mockPatch, `- id: llm-pi-ai
   config:
@@ -65,7 +77,6 @@ await writeFile(mockPatch, `- id: llm-pi-ai
           - id: qwen3.8-27b
 `)
 
-const home = await prepareHome('bole-trace-')
 await writeFile(join(home, '.env'), 'BOLE_API_KEY=local\n')
 let client
 try {
@@ -95,6 +106,22 @@ try {
   assert(secondEvents.filter((event) => event.type === 'turn/start').length === 1, 'trace turn 2 missing its turn/start')
   assert(secondEvents.filter((event) => event.type === 'user/message').length === 1, 'trace turn 2 missing the user message')
 
+  const longMark = client.notifications.length
+  await client.request('session/prompt', { sessionId: 's-trace', contentBlocks: [{ type: 'text', text: 'read long' }] })
+  await waitEvent(client, 's-trace', 'turn/end', longMark)
+  const longPath = join(home, 'trace-long.jsonl')
+  await client.request('session/trace', { sessionId: 's-trace', turn: 3, path: longPath })
+  const rawLong = await readJsonl(longPath)
+  const rawResult = rawLong.find((event) => event.type === 'tool/result')
+  const rawText = rawResult?.data?.message?.content?.find((block) => block.type === 'text')?.text ?? ''
+  assert(rawText.length === 10_000, `trace lost the full tool output: ${rawText.length}; types=${rawLong.map((event) => event.type).join(',')}; calls=${mock.calls.length}`)
+  const projectedResult = client.notifications
+    .slice(longMark)
+    .filter((frame) => frame.method === 'bole.event' && frame.params?.sessionId === 's-trace' && frame.params.event.type === 31)
+    .at(-1)
+  assert(projectedResult?.params?.event?.payload?.truncated === true, 'projected long result was not truncated')
+  assert(projectedResult.params.event.payload.resultSummary.length === 8192, 'projected long result is not 8KB')
+
   const emptyPath = join(home, 'trace-empty.jsonl')
   const empty = await client.request('session/trace', { sessionId: 's-trace', turn: 99, path: emptyPath })
   assert(empty.eventCount === 0, `missing turn produced ${empty.eventCount} events`)
@@ -120,13 +147,14 @@ try {
   const cold = await client.request('session/trace', { sessionId: 's-trace', path: coldPath })
   const coldEvents = await readJsonl(coldPath)
   assert(cold.eventCount === coldEvents.length && cold.eventCount > 0, `cold trace returned ${JSON.stringify(cold)}`)
-  assert(coldEvents.filter((event) => event.type === 'turn/start').length === 2, 'cold trace lost a turn')
+  assert(coldEvents.filter((event) => event.type === 'turn/start').length === 3, 'cold trace lost a turn')
   await client.request('shutdown', {}, 15_000)
   const secondExit = await client.waitExit(20_000)
   assert(secondExit.code === 0, `second runtime exit ${String(secondExit.code)}`)
 
   console.log('PASS trace live: all turns and turn=2 filter')
   console.log('PASS trace errors: TRACE_WRITE_FAILED, SESSION_NOT_FOUND')
+  console.log('PASS trace long output: 10KB raw vs 8KB projected')
   console.log('PASS trace cold export after restart')
 } catch (error) {
   console.error(`FAIL trace: ${error instanceof Error ? error.message : String(error)}`)
