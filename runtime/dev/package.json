@@ -1,0 +1,19 @@
+{
+  "name": "@bole/sdk-dev",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Development harness for the Bole SDK runtime plugin. Not shipped in the offline package.",
+  "scripts": {
+    "build": "tsc -p ../packages/sdk-server/tsconfig.json",
+    "smoke": "node smoke.mjs",
+    "capture": "node capture.mjs",
+    "e2e": "node e2e.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  }
+}

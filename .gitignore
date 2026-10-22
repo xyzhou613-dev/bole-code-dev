@@ -20,3 +20,8 @@ Thumbs.db
 Desktop.ini
 *.swp
 *~
+
+# ─── Bole SDK 开发期产物 ───────────────────────────────────────
+runtime/.dev/
+runtime/dev/.dev/
+runtime/dist/
