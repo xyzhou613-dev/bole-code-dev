@@ -60,8 +60,11 @@ for (const entry of entries) {
   const types = events.map((event) => event.type)
   check(name, types.every((type) => KNOWN_TYPES.has(type)), 'all event types known')
   check(name, events.every((event) => event.payload?.v === 1), 'payload.v === 1')
-  check(name, events.every((event) => typeof event.session_id === 'string' && event.session_id !== ''),
-    'session id preserved')
+  // 03-events.md §1: runtime-level events carry an empty session_id; the
+  // default RSI state is the one such event a fixture can contain today.
+  check(name, events.every((event) => typeof event.session_id === 'string'
+    && (event.session_id !== '' || (event.type === 15 && event.payload?.scope === 'default'))),
+  'session id preserved')
   check(name, events.every((event) => event.session_id === event.payload?.sessionId
     || event.payload?.sessionId === undefined), 'payload session id agrees')
   check(name, events.every((event, index) => index === 0 || event.event_id > events[index - 1].event_id),
