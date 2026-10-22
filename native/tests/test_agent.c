@@ -141,7 +141,10 @@ static void BOLE_CALL on_event(void* user_data, const bole_event* event) {
     if (state->event_type_count < 128) {
       state->event_types[state->event_type_count++] = (int)event->type;
     }
-    if (strcmp(event->session_id, "s-001") != 0) {
+    int default_rsi = event->type == BOLE_EVENT_RSI_STATE
+        && event->payload_json != NULL
+        && strstr(event->payload_json, "\"scope\":\"default\"") != NULL;
+    if (!default_rsi && strcmp(event->session_id, "s-001") != 0) {
       state->session_ok = 0;
     }
   }
@@ -711,6 +714,10 @@ static void test_fixture_replay(void) {
   static const int happy_types[] = {10, 15, 11, 14, 22, 30, 31, 12, 11, 20, 22, 12, 50};
   static const int model_error_types[] = {10, 15, 11, 14, 12, 51};
   static const int text_types[] = {10, 15, 11, 14, 20, 22, 12, 50};
+  static const int long_output_types[] = {15, 10, 15, 11, 14, 22, 30, 31, 12, 11, 20, 22, 12, 50};
+  static const int max_tokens_types[] = {15, 10, 15, 11, 14, 20, 22, 12, 50};
+  static const int rsi_types[] = {15, 15, 10, 11, 15, 14, 20, 22, 12, 50};
+  static const int tool_error_types[] = {15, 10, 15, 11, 14, 22, 30, 31, 12, 11, 20, 22, 12, 50};
   static const struct {
     const char* file;
     int terminal_type;
@@ -726,6 +733,18 @@ static void test_fixture_replay(void) {
      sizeof(model_error_types) / sizeof(model_error_types[0])},
     {"text-turn.jsonl", 50, "completed", text_types,
      sizeof(text_types) / sizeof(text_types[0])},
+    {"long-tool-output.jsonl", 50, "completed", long_output_types,
+     sizeof(long_output_types) / sizeof(long_output_types[0])},
+    {"max-tokens.jsonl", 50, "max_tokens", max_tokens_types,
+     sizeof(max_tokens_types) / sizeof(max_tokens_types[0])},
+    {"rsi-available.jsonl", 50, "completed", rsi_types,
+     sizeof(rsi_types) / sizeof(rsi_types[0])},
+    {"rsi-delivered.jsonl", 50, "completed", rsi_types,
+     sizeof(rsi_types) / sizeof(rsi_types[0])},
+    {"rsi-unsupported.jsonl", 50, "completed", rsi_types,
+     sizeof(rsi_types) / sizeof(rsi_types[0])},
+    {"tool-error.jsonl", 50, "completed", tool_error_types,
+     sizeof(tool_error_types) / sizeof(tool_error_types[0])},
   };
 
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {

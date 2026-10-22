@@ -16,7 +16,7 @@ Windows x64 交付件：`bole_agent.dll` + `bole_agent.lib` + `bole_agent.h`。
 | B2 C ABI | 04 的全部函数、错误码映射、会话表、RSI 投影、trace、release | 已实现；POSIX 契约测试 + 真实运行时 C ABI 测试通过 |
 | B3 Win32 平台层 | `CreatePipe` / `CreateProcessW` / Job Object / UTF-16 路径 / stderr | 已实现；mingw-w64 交叉编译通过，**待在 Windows/MSVC 上运行验证** |
 | B4/B5 示例 | 控制台、Win32 界面 | 不在本目录 |
-| C1 fixtures | 4 个 wire 场景 + `manifest.json` + `validate.mjs` | 已入库（0.1.7-alpha.2 + mock 模型捕获） |
+| C1 fixtures | 10 个 wire 场景 + `manifest.json` + `validate.mjs` | 已入库；C 侧逐条回放（0.1.7-alpha.2 + mock 模型捕获） |
 
 ## 结构
 
