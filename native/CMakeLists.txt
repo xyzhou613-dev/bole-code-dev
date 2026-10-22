@@ -81,6 +81,8 @@ target_compile_definitions(bole_test_error PRIVATE BOLE_AGENT_STATIC)
 add_test(NAME json  COMMAND bole_test_json)
 add_test(NAME error COMMAND bole_test_error)
 
+find_program(BOLE_NODE_EXECUTABLE node)
+
 # The end-to-end contract test uses POSIX temp directories, getline, and a
 # shell wrapper for node.exe; Windows bring-up validates the DLL separately.
 if(NOT WIN32)
@@ -93,12 +95,31 @@ if(NOT WIN32)
     ${BOLE_INCLUDE_DIR} ${BOLE_SOURCE_DIR})
   target_compile_definitions(bole_test_agent PRIVATE
     BOLE_AGENT_STATIC
+    BOLE_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
     FAKE_RUNTIME_PATH="$<TARGET_FILE:bole_fake_runtime>")
   target_link_libraries(bole_test_agent PRIVATE Threads::Threads)
   add_test(NAME agent COMMAND bole_test_agent)
+
+  # Optional real-runtime test. It is only registered when the developer has a
+  # built plugin and a BOLE_DEV_RUNTIME tree (see runtime/dev/README.md).
+  add_executable(bole_test_runtime tests/test_runtime.c ${BOLE_CORE})
+  target_include_directories(bole_test_runtime PRIVATE
+    ${BOLE_INCLUDE_DIR} ${BOLE_SOURCE_DIR})
+  target_compile_definitions(bole_test_runtime PRIVATE BOLE_AGENT_STATIC)
+  target_link_libraries(bole_test_runtime PRIVATE Threads::Threads)
+  if(BOLE_NODE_EXECUTABLE
+      AND DEFINED ENV{BOLE_DEV_RUNTIME}
+      AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../runtime/dev/.dev/cordis.patch.yml")
+    add_test(NAME runtime
+      COMMAND ${BOLE_NODE_EXECUTABLE}
+              ${CMAKE_CURRENT_SOURCE_DIR}/scripts/integration-runtime.mjs
+              $<TARGET_FILE:bole_test_runtime>)
+    set_tests_properties(runtime PROPERTIES
+      ENVIRONMENT "BOLE_DEV_RUNTIME=$ENV{BOLE_DEV_RUNTIME}"
+      TIMEOUT 180)
+  endif()
 endif()
 
-find_program(BOLE_NODE_EXECUTABLE node)
 if(BOLE_NODE_EXECUTABLE)
   add_test(NAME fixtures
     COMMAND ${BOLE_NODE_EXECUTABLE}

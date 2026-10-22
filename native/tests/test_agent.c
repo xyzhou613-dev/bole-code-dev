@@ -10,6 +10,7 @@
 #include "platform.h"
 
 #include <assert.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +20,10 @@
 
 #ifndef FAKE_RUNTIME_PATH
 #  define FAKE_RUNTIME_PATH "/tmp/bole_fake_runtime"
+#endif
+
+#ifndef BOLE_FIXTURE_DIR
+#  define BOLE_FIXTURE_DIR "tests/fixtures"
 #endif
 
 static int g_failures = 0;
@@ -43,6 +48,8 @@ typedef struct test_state {
   int exited;
   int finished;
   int finished_count;
+  int terminal;
+  int task_failed;
   int aborted;
   int tool_started;
   int tool_finished;
@@ -56,6 +63,10 @@ typedef struct test_state {
   char tool_payload[1024];
   char rsi_payload[1024];
   char status_payload[256];
+  char terminal_payload[512];
+  int event_type_count;
+  int event_types[128];
+  int session_ok;
 
   uint64_t last_event_id;
   int64_t last_ts;
@@ -68,6 +79,7 @@ typedef struct test_state {
   int check_forbidden;
   int forbidden[4];
   int allowed_rsi_get;
+  int replacement_count;
 } test_state;
 
 typedef struct scenario {
@@ -125,6 +137,14 @@ static void BOLE_CALL on_event(void* user_data, const bole_event* event) {
       || strncmp(event->payload_json, "{\"v\":1", 6) != 0) {
     state->payload_ok = 0;
   }
+  if (event->type >= 10 && event->type <= 51) {
+    if (state->event_type_count < 128) {
+      state->event_types[state->event_type_count++] = (int)event->type;
+    }
+    if (strcmp(event->session_id, "s-001") != 0) {
+      state->session_ok = 0;
+    }
+  }
 
   switch (event->type) {
     case BOLE_EVENT_RUNTIME_READY:
@@ -144,11 +164,20 @@ static void BOLE_CALL on_event(void* user_data, const bole_event* event) {
     case BOLE_EVENT_TASK_FINISHED:
       state->finished = 1;
       state->finished_count++;
+      state->terminal = 1;
       if (event->payload_json != NULL
           && strstr(event->payload_json, "\"aborted\"") != NULL) {
         state->aborted = 1;
       }
       copy_text(state->finished_payload, sizeof(state->finished_payload),
+                event->payload_json);
+      copy_text(state->terminal_payload, sizeof(state->terminal_payload),
+                event->payload_json);
+      break;
+    case BOLE_EVENT_TASK_FAILED:
+      state->terminal = 1;
+      state->task_failed = 1;
+      copy_text(state->terminal_payload, sizeof(state->terminal_payload),
                 event->payload_json);
       break;
     case BOLE_EVENT_TOOL_CALL_STARTED:
@@ -203,6 +232,29 @@ static void BOLE_CALL on_event(void* user_data, const bole_event* event) {
   bole_mutex_unlock(&state->lock);
 }
 
+static void BOLE_CALL on_replacement_event(void* user_data, const bole_event* event) {
+  test_state* state = (test_state*)user_data;
+  bole_mutex_lock(&state->lock);
+  state->replacement_count++;
+  if (event->type == BOLE_EVENT_TASK_FINISHED) {
+    state->finished = 1;
+    state->terminal = 1;
+  }
+  bole_cond_broadcast(&state->cond);
+  bole_mutex_unlock(&state->lock);
+}
+
+typedef struct wait_arg {
+  bole_handle* handle;
+  int32_t code;
+} wait_arg;
+
+static void* wait_ready_thread(void* argument) {
+  wait_arg* arg = (wait_arg*)argument;
+  arg->code = bole_wait_ready(arg->handle, 5000);
+  return NULL;
+}
+
 static int wait_flag(test_state* state, int* flag, int timeout_ms) {
   uint64_t deadline = bole_monotonic_ms() + (uint64_t)timeout_ms;
   int result = 0;
@@ -252,6 +304,18 @@ static void write_file(const char* path, const char* text, int executable) {
   }
 }
 
+static int file_contains(const char* path, const char* needle) {
+  FILE* file = fopen(path, "rb");
+  if (file == NULL) {
+    return 0;
+  }
+  char buffer[4096];
+  size_t length = fread(buffer, 1, sizeof(buffer) - 1, file);
+  fclose(file);
+  buffer[length] = '\0';
+  return strstr(buffer, needle) != NULL;
+}
+
 static void make_runtime(scenario* scenario) {
   char path[1024];
   snprintf(path, sizeof(path), "%s/node_modules", scenario->runtime_dir);
@@ -291,6 +355,7 @@ static void scenario_setup(scenario* scenario, const char* mode) {
   memset(&scenario->state, 0, sizeof(scenario->state));
   scenario->state.order_ok = 1;
   scenario->state.payload_ok = 1;
+  scenario->state.session_ok = 1;
   assert(bole_mutex_init(&scenario->state.lock) == 0);
   assert(bole_cond_init(&scenario->state.cond) == 0);
   scenario->state.initialized = 1;
@@ -341,6 +406,9 @@ static void create_session(scenario* scenario, const char* id, bole_session** se
 static void test_happy(void) {
   scenario c;
   scenario_setup(&c, "happy");
+  char log_path[1024];
+  snprintf(log_path, sizeof(log_path), "%s/bole.log", c.cwd);
+  c.config.log_path = log_path;
   CHECK(scenario_init(&c) == BOLE_OK, "init");
   CHECK(bole_wait_ready(c.handle, 5000) == BOLE_OK, "wait_ready");
   CHECK(wait_flag(&c.state, &c.state.ready, 2000) == 0, "ready event");
@@ -399,6 +467,7 @@ static void test_happy(void) {
         "second turn finished");
 
   CHECK(bole_cancel(session) == BOLE_E_NO_ACTIVE_TASK, "cancel idle");
+  CHECK(file_contains(log_path, "no active task"), "log path records errors");
   CHECK(bole_rsi_set(c.handle, 1) == BOLE_OK, "rsi set");
   bole_rsi_state rsi;
   memset(&rsi, 0, sizeof(rsi));
@@ -637,6 +706,206 @@ static void test_structural_overflow(void) {
   scenario_teardown(&c);
 }
 
+static void test_fixture_replay(void) {
+  static const int cancel_types[] = {10, 15, 11, 14, 12, 50};
+  static const int happy_types[] = {10, 15, 11, 14, 22, 30, 31, 12, 11, 20, 22, 12, 50};
+  static const int model_error_types[] = {10, 15, 11, 14, 12, 51};
+  static const int text_types[] = {10, 15, 11, 14, 20, 22, 12, 50};
+  static const struct {
+    const char* file;
+    int terminal_type;
+    const char* outcome;
+    const int* types;
+    size_t type_count;
+  } cases[] = {
+    {"cancel-mid-turn.jsonl", 50, "aborted", cancel_types,
+     sizeof(cancel_types) / sizeof(cancel_types[0])},
+    {"happy-tool.jsonl", 50, "completed", happy_types,
+     sizeof(happy_types) / sizeof(happy_types[0])},
+    {"model-error.jsonl", 51, "SERVER", model_error_types,
+     sizeof(model_error_types) / sizeof(model_error_types[0])},
+    {"text-turn.jsonl", 50, "completed", text_types,
+     sizeof(text_types) / sizeof(text_types[0])},
+  };
+
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    scenario c;
+    scenario_setup(&c, "replay");
+    char fixture[1024];
+    snprintf(fixture, sizeof(fixture), "%s/%s", BOLE_FIXTURE_DIR, cases[i].file);
+    setenv("BOLE_FAKE_FIXTURE", fixture, 1);
+    CHECK(scenario_init(&c) == BOLE_OK, "fixture init");
+    CHECK(bole_wait_ready(c.handle, 5000) == BOLE_OK, "fixture ready");
+    bole_session* session = NULL;
+    create_session(&c, "s-001", &session);
+    CHECK(bole_submit(session, "replay") == BOLE_OK, "fixture submit");
+    CHECK(wait_flag(&c.state, &c.state.terminal, 5000) == 0, "fixture terminal");
+    CHECK(c.state.event_type_count == (int)cases[i].type_count,
+          "fixture event count");
+    for (size_t k = 0; k < cases[i].type_count
+         && k < (size_t)c.state.event_type_count; k++) {
+      CHECK(c.state.event_types[k] == cases[i].types[k], "fixture event order");
+    }
+    CHECK(c.state.session_ok == 1, "fixture session id");
+    CHECK(c.state.payload_ok == 1, "fixture payload v1");
+    CHECK(c.state.failed == 0, "fixture did not fail the handle");
+    CHECK(c.state.counts[cases[i].terminal_type] == 1, "fixture terminal event");
+    CHECK(strstr(c.state.terminal_payload, cases[i].outcome) != NULL,
+          "fixture terminal outcome");
+    if (cases[i].terminal_type == 51) {
+      CHECK(c.state.task_failed == 1, "fixture task failed");
+    }
+    scenario_teardown(&c);
+  }
+}
+
+static void test_relative_paths(void) {
+  scenario c;
+  scenario_setup(&c, "happy");
+  char saved[1024];
+  CHECK(getcwd(saved, sizeof(saved)) != NULL, "save cwd");
+  CHECK(chdir(c.root) == 0, "enter root");
+  c.config.runtime_dir = "runtime";
+  c.config.dsh_home = "home";
+  c.config.log_path = "bole-relative.log";
+  int32_t code = scenario_init(&c);
+  CHECK(chdir(saved) == 0, "restore cwd");
+  CHECK(code == BOLE_OK, "relative paths init");
+  if (code == BOLE_OK) {
+    CHECK(bole_wait_ready(c.handle, 5000) == BOLE_OK, "relative paths ready");
+    bole_session* session = NULL;
+    create_session(&c, "s-relative", &session);
+    CHECK(bole_cancel(session) == BOLE_E_NO_ACTIVE_TASK, "relative cancel");
+    char log_path[1024];
+    snprintf(log_path, sizeof(log_path), "%s/bole-relative.log", c.root);
+    CHECK(file_contains(log_path, "no active task"), "relative log path");
+  }
+  scenario_teardown(&c);
+}
+
+static void test_callback_replace(void) {
+  scenario c;
+  scenario_setup(&c, "happy");
+  CHECK(scenario_init(&c) == BOLE_OK, "init");
+  CHECK(bole_wait_ready(c.handle, 5000) == BOLE_OK, "ready");
+  bole_session* session = NULL;
+  create_session(&c, "s-replace", &session);
+  CHECK(bole_set_event_callback(c.handle, on_replacement_event, &c.state)
+            == BOLE_OK,
+        "replace callback");
+  CHECK(bole_submit(session, "replace") == BOLE_OK, "submit");
+  CHECK(wait_flag(&c.state, &c.state.finished, 5000) == 0, "replacement finished");
+  CHECK(c.state.replacement_count > 0, "replacement callback used");
+  CHECK(bole_set_event_callback(c.handle, NULL, NULL)
+            == BOLE_E_EVENT_CALLBACK_REQUIRED,
+        "null replacement");
+  scenario_teardown(&c);
+}
+
+static void test_callback_queued(void) {
+  scenario c;
+  scenario_setup(&c, "flood-delta");
+  c.state.sleep_on_first = 1;
+  CHECK(scenario_init(&c) == BOLE_OK, "init");
+  CHECK(bole_wait_ready(c.handle, 5000) == BOLE_OK, "ready");
+  bole_session* session = NULL;
+  create_session(&c, "s-queued", &session);
+  CHECK(bole_submit(session, "queued") == BOLE_OK, "submit");
+  sleep_ms(50);
+  CHECK(bole_set_event_callback(c.handle, on_replacement_event, &c.state)
+            == BOLE_OK,
+        "replace while queued");
+  CHECK(wait_flag(&c.state, &c.state.finished, 15000) == 0,
+        "queued replacement finished");
+  CHECK(c.state.replacement_count > 0, "queued events use new callback");
+  scenario_teardown(&c);
+}
+
+static void test_invalid_arguments(void) {
+  scenario c;
+  scenario_setup(&c, "happy");
+  CHECK(scenario_init(&c) == BOLE_OK, "init");
+  CHECK(bole_wait_ready(c.handle, 5000) == BOLE_OK, "ready");
+  bole_session* session = NULL;
+  create_session(&c, "s-invalid", &session);
+
+  bole_rsi_state rsi;
+  memset(&rsi, 0, sizeof(rsi));
+  rsi.size = sizeof(rsi);
+  CHECK(bole_set_event_callback(NULL, on_event, NULL) == BOLE_E_INVALID_CONFIG,
+        "null handle callback");
+  CHECK(bole_wait_ready(NULL, 0) == BOLE_E_INVALID_CONFIG, "null wait handle");
+  CHECK(bole_rsi_get(NULL, &rsi) == BOLE_E_INVALID_CONFIG, "null rsi handle");
+  CHECK(bole_rsi_get(c.handle, NULL) == BOLE_E_INVALID_CONFIG, "null rsi output");
+  rsi.size = 0;
+  CHECK(bole_rsi_get(c.handle, &rsi) == BOLE_E_INVALID_CONFIG, "small rsi output");
+  CHECK(bole_rsi_set(c.handle, 2) == BOLE_E_INVALID_CONFIG, "bad rsi value");
+  CHECK(bole_rsi_set(NULL, 0) == BOLE_E_INVALID_CONFIG, "null rsi set handle");
+  CHECK(bole_last_error(c.handle, NULL, NULL, 1) == BOLE_E_INVALID_CONFIG,
+        "null error buffer");
+  CHECK(bole_last_error(NULL, NULL, NULL, 0) == BOLE_E_INVALID_CONFIG,
+        "null error handle");
+
+  CHECK(bole_session_create(c.handle, "", NULL, &session)
+            == BOLE_E_INVALID_CONFIG,
+        "empty session id");
+  CHECK(bole_session_create(c.handle, NULL, NULL, &session)
+            == BOLE_E_INVALID_CONFIG,
+        "null session id");
+  CHECK(bole_session_resume(c.handle, NULL, &session) == BOLE_E_INVALID_CONFIG,
+        "null resume id");
+  CHECK(bole_session_set_preset(session, NULL) == BOLE_E_INVALID_CONFIG,
+        "null preset");
+  CHECK(bole_session_set_preset(session, "") == BOLE_E_INVALID_CONFIG,
+        "empty preset");
+  CHECK(bole_submit(session, NULL) == BOLE_E_INVALID_CONFIG, "null text");
+  CHECK(bole_submit(session, "") == BOLE_E_INVALID_CONFIG, "empty text");
+  CHECK(bole_submit_blocks(session, NULL) == BOLE_E_INVALID_CONFIG,
+        "null blocks");
+  CHECK(bole_submit_blocks(session, "{}") == BOLE_E_INVALID_CONFIG,
+        "object blocks");
+  CHECK(bole_submit_blocks(session, "[]") == BOLE_E_INVALID_CONFIG,
+        "empty blocks");
+  CHECK(bole_cancel(NULL) == BOLE_E_INVALID_CONFIG, "null cancel");
+  CHECK(bole_trace_export(c.handle, NULL, 0, "trace", NULL)
+            == BOLE_E_INVALID_CONFIG,
+        "null trace session");
+  CHECK(bole_trace_export(c.handle, "s-invalid", 0, NULL, NULL)
+            == BOLE_E_INVALID_CONFIG,
+        "null trace path");
+  CHECK(bole_trace_export(NULL, "s-invalid", 0, "trace", NULL)
+            == BOLE_E_INVALID_CONFIG,
+        "null trace handle");
+  bole_handle* dummy = NULL;
+  CHECK(bole_init(NULL, &dummy) == BOLE_E_INVALID_CONFIG, "null config");
+  CHECK(bole_init(NULL, NULL) == BOLE_E_INVALID_ARGUMENT, "null out handle");
+  CHECK(bole_release(NULL) == BOLE_E_INVALID_CONFIG, "null release");
+  scenario_teardown(&c);
+}
+
+static void test_release_concurrent(void) {
+  scenario c;
+  scenario_setup(&c, "silent");
+  CHECK(scenario_init(&c) == BOLE_OK, "init");
+  wait_arg arg;
+  arg.handle = c.handle;
+  arg.code = 0;
+  pthread_t thread;
+  CHECK(pthread_create(&thread, NULL, wait_ready_thread, &arg) == 0,
+        "start waiter");
+  sleep_ms(100);
+  uint64_t started = bole_monotonic_ms();
+  CHECK(bole_release(c.handle) == BOLE_OK, "concurrent release");
+  uint64_t elapsed = bole_monotonic_ms() - started;
+  CHECK(elapsed < 500, "release returns immediately");
+  c.handle = NULL;
+  c.state.handle = NULL;
+  pthread_join(thread, NULL);
+  CHECK(arg.code == BOLE_E_RUNTIME_EXITED, "waiter sees runtime exit");
+  sleep_ms(250);
+  scenario_teardown(&c);
+}
+
 static void test_handshake_error(void) {
   scenario c;
   scenario_setup(&c, "handshake-error");
@@ -701,6 +970,12 @@ int main(void) {
   test_callback_restrictions();
   test_delta_flood();
   test_structural_overflow();
+  test_fixture_replay();
+  test_relative_paths();
+  test_callback_replace();
+  test_callback_queued();
+  test_invalid_arguments();
+  test_release_concurrent();
   test_handshake_error();
   test_runtime_exit();
   test_init_validation();

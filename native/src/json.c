@@ -1,6 +1,7 @@
 #include "json.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -494,8 +495,9 @@ int bole_json_u64(const bole_json_member* member, uint64_t* out) {
   memcpy(temp, member->value, member->value_len);
   temp[member->value_len] = '\0';
   char* end = NULL;
+  errno = 0;
   unsigned long long value = strtoull(temp, &end, 10);
-  if (end == temp || *end != '\0' || temp[0] == '-') {
+  if (end == temp || *end != '\0' || temp[0] == '-' || errno == ERANGE) {
     return -1;
   }
   *out = (uint64_t)value;
@@ -511,8 +513,9 @@ int bole_json_i64(const bole_json_member* member, int64_t* out) {
   memcpy(temp, member->value, member->value_len);
   temp[member->value_len] = '\0';
   char* end = NULL;
+  errno = 0;
   long long value = strtoll(temp, &end, 10);
-  if (end == temp || *end != '\0') {
+  if (end == temp || *end != '\0' || errno == ERANGE) {
     return -1;
   }
   *out = (int64_t)value;

@@ -191,6 +191,16 @@ static char* path_join(const char* base, const char* name) {
   return result;
 }
 
+static char* absolute_from(const char* base, const char* path) {
+  if (path == NULL) {
+    return NULL;
+  }
+  if (is_absolute_path(path)) {
+    return bole_strdup(path);
+  }
+  return path_join(base, path);
+}
+
 static int32_t clamp_timeout(uint32_t timeout_ms) {
   if (timeout_ms > 0x7fffffffu) {
     return 0x7fffffff;
@@ -295,6 +305,40 @@ static int32_t config_copy(bole_config* target, const bole_config* source) {
   }
   if (target->max_line_bytes == 0) {
     target->max_line_bytes = BOLE_DEFAULT_MAX_LINE;
+  }
+
+  /* The runtime process changes cwd to the session cwd, so relative runtime
+   * paths must be made absolute before spawn; otherwise node.exe is resolved
+   * against the project directory and the handshake fails. */
+  int needs_resolve = !is_absolute_path(target->runtime_dir)
+      || !is_absolute_path(target->dsh_home)
+      || (target->log_path != NULL && !is_absolute_path(target->log_path));
+  if (needs_resolve) {
+    char* process_cwd = bole_getcwd();
+    if (process_cwd == NULL) {
+      config_free(target);
+      return BOLE_E_INVALID_CONFIG;
+    }
+    if (!is_absolute_path(target->runtime_dir)) {
+      char* resolved = absolute_from(process_cwd, target->runtime_dir);
+      free((void*)target->runtime_dir);
+      target->runtime_dir = resolved;
+    }
+    if (!is_absolute_path(target->dsh_home)) {
+      char* resolved = absolute_from(process_cwd, target->dsh_home);
+      free((void*)target->dsh_home);
+      target->dsh_home = resolved;
+    }
+    if (target->log_path != NULL && !is_absolute_path(target->log_path)) {
+      char* resolved = absolute_from(process_cwd, target->log_path);
+      free((void*)target->log_path);
+      target->log_path = resolved;
+    }
+    free(process_cwd);
+    if (target->runtime_dir == NULL || target->dsh_home == NULL) {
+      config_free(target);
+      return BOLE_E_INVALID_CONFIG;
+    }
   }
   return BOLE_OK;
 }
@@ -861,10 +905,9 @@ static void handle_rsi_state(bole_handle* handle, const bole_json_member* params
       || (strcmp(scope, "default") != 0 && strcmp(scope, "session") != 0)) {
     return;
   }
-  char session[256] = "";
+  char* session = get_string_alloc(params, count, "sessionId");
   char preset[BOLE_PRESET_MAX] = "";
   char source[16] = "";
-  get_string(params, count, "sessionId", session, sizeof(session));
   get_string(params, count, "preset", preset, sizeof(preset));
   get_string(params, count, "source", source, sizeof(source));
   int enabled = get_bool(params, count, "enabled", 0);
@@ -876,7 +919,7 @@ static void handle_rsi_state(bole_handle* handle, const bole_json_member* params
   }
   bole_buf_append_cstr(&payload, "{\"v\":1,\"scope\":");
   bole_buf_append_json_string(&payload, scope);
-  if (session[0] != '\0') {
+  if (session != NULL && session[0] != '\0') {
     bole_buf_append_cstr(&payload, ",\"sessionId\":");
     bole_buf_append_json_string(&payload, session);
   }
@@ -896,9 +939,10 @@ static void handle_rsi_state(bole_handle* handle, const bole_json_member* params
   if (strcmp(scope, "default") == 0) {
     update_default_rsi(handle, enabled, composed, preset);
   }
-  event_enqueue(handle, BOLE_EVENT_RSI_STATE, session, 0, 0, 0, 0,
-                payload.data, payload.len, 0);
+  event_enqueue(handle, BOLE_EVENT_RSI_STATE, session == NULL ? "" : session,
+                0, 0, 0, 0, payload.data, payload.len, 0);
   bole_buf_free(&payload);
+  free(session);
 }
 
 static void handle_status(bole_handle* handle, const bole_json_member* params,

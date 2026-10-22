@@ -14,6 +14,7 @@
  *   flood-delta         floods text deltas (deltas shed, turn completes)
  *   handshake-error     initialize returns MODEL_NOT_FOUND
  *   exit-after-ready    answers initialize and exits immediately
+ *   replay              answers session/prompt then replays BOLE_FAKE_FIXTURE
  *
  * It implements just enough of the Bole protocol to exercise the C library:
  * initialize, session/create, session/prompt, session/cancel, session/trace,
@@ -358,6 +359,23 @@ int main(void) {
         continue;
       }
       respond_ok(id, "{\"messageId\":\"m-1\"}");
+      if (mode_is("replay")) {
+        const char* fixture = getenv("BOLE_FAKE_FIXTURE");
+        FILE* file = fixture == NULL ? NULL : fopen(fixture, "rb");
+        if (file != NULL) {
+          char* fixture_line = NULL;
+          size_t fixture_capacity = 0;
+          ssize_t fixture_length;
+          while ((fixture_length = getline(&fixture_line, &fixture_capacity, file)) >= 0) {
+            fwrite(fixture_line, 1, (size_t)fixture_length, stdout);
+          }
+          free(fixture_line);
+          fclose(file);
+          fflush(stdout);
+        }
+        active = 0;
+        continue;
+      }
       handle_prompt(session);
     } else if (strcmp(method, "session/cancel") == 0) {
       char session[128];

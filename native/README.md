@@ -13,8 +13,8 @@ Windows x64 交付件：`bole_agent.dll` + `bole_agent.lib` + `bole_agent.h`。
 | 工作包 | 内容 | 状态 |
 |---|---|---|
 | B1 传输/RPC/队列 | NDJSON 分帧、行上限、请求关联与超时、首帧校验、有界事件队列、`last_error` | 已实现；`2005` / `2006` / `2007` 路径有测试 |
-| B2 C ABI | 04 的全部函数、错误码映射、会话表、RSI 投影、trace、release | 已实现；POSIX 契约测试通过 |
-| B3 Win32 平台层 | `CreatePipe` / `CreateProcessW` / Job Object / UTF-16 路径 / stderr | 已实现；**待在 Windows 构建机编译验证** |
+| B2 C ABI | 04 的全部函数、错误码映射、会话表、RSI 投影、trace、release | 已实现；POSIX 契约测试 + 真实运行时 C ABI 测试通过 |
+| B3 Win32 平台层 | `CreatePipe` / `CreateProcessW` / Job Object / UTF-16 路径 / stderr | 已实现；mingw-w64 交叉编译通过，**待在 Windows/MSVC 上运行验证** |
 | B4/B5 示例 | 控制台、Win32 界面 | 不在本目录 |
 | C1 fixtures | 4 个 wire 场景 + `manifest.json` + `validate.mjs` | 已入库（0.1.7-alpha.2 + mock 模型捕获） |
 
@@ -37,7 +37,11 @@ native/
 │   ├── test_json.c           JSON 扫描、转义、数字、构造器边界
 │   ├── test_error.c          `data.code` → 数值码映射
 │   ├── test_agent.c          传输、事件、会话、RSI、trace、取消、背压、release
+│   ├── test_runtime.c        真实 --profile sdk + mock 模型的 C ABI 端到端
 │   └── fixtures/             wire 通知样例与校验脚本
+├── scripts/
+│   ├── cross-win64.sh        mingw-w64 语法/链接检查
+│   └── integration-runtime.mjs 真实运行时测试编排（mock 模型 + 临时 DSH_HOME）
 └── CMakeLists.txt
 ```
 
@@ -51,6 +55,23 @@ cmake --build <build-dir> -j4
 ctest --test-dir <build-dir> --output-on-failure
 ```
 
+如果开发机已按 [`runtime/dev/README.md`](../runtime/dev/README.md) 准备好锁定的
+运行时树、已构建插件并执行过 `build-experience.mjs`，配置时带上
+`BOLE_DEV_RUNTIME`，CTest 会额外注册真实运行时用例：
+
+```bash
+BOLE_DEV_RUNTIME=<runtime> cmake -S native -B <build-dir>
+cmake --build <build-dir> -j4
+BOLE_DEV_RUNTIME=<runtime> ctest --test-dir <build-dir> --output-on-failure
+```
+
+也可以单独跑：
+
+```bash
+BOLE_DEV_RUNTIME=<runtime> node native/scripts/integration-runtime.mjs \
+  <build-dir>/bole_test_runtime
+```
+
 Windows x64（正式交付，需 MSVC Build Tools 2022）：
 
 ```powershell
@@ -58,6 +79,15 @@ cmake -S native -B native/build -G "Visual Studio 17 2022" -A x64
 cmake --build native/build --config Release
 ctest --test-dir native/build -C Release --output-on-failure
 ```
+
+POSIX 主机上的 Win32 语法/链接检查（可选，不能替代 MSVC）：
+
+```bash
+native/scripts/cross-win64.sh <build-dir>
+```
+
+脚本用 `x86_64-w64-mingw32-gcc -Werror` 编译全部源码、链接 DLL 与
+`json` / `error` 测试，并依赖 `--exclude-all-symbols` 只导出 14 个公开 ABI。
 
 - POSIX 测试使用 `src/platform_posix.c`；Windows 测试目前只构建 `json` / `error`
   与 fixture 校验，`platform_win32.c` 的 DLL/Job Object 行为在 B3 构建机上验证。
@@ -95,8 +125,11 @@ ctest --test-dir native/build -C Release --output-on-failure
 
 ## 已知限制与待办
 
-- `platform_win32.c` 尚未在 Windows 上编译/运行；B3 需验证 DLL 导出、Job
-  Object 回收、UTF-16 路径、管道继承与 `CREATE_NO_WINDOW`。
+- `platform_win32.c` 已用 mingw-w64 交叉编译并检查 DLL 导出；仍未在
+  Windows/MSVC 上运行，B3 需验证 Job Object 回收、UTF-16 路径、管道继承与
+  `CREATE_NO_WINDOW`。
+- 真实运行时用例使用 `runtime/dev` 的 mock 模型；真实内网网关、玩具 MCP
+  工具调用、Windows 上的 `--profile sdk` 仍需现场/Windows 环境验证。
 - `tests/fixtures/` 是 0.1.7-alpha.2 + mock 模型的捕获；真实内网网关还需按
   05 §3 做一次集成抽检，不写入 fixtures。
 - `session/trace` 的文件写入由运行时插件完成，C 库只传 UTF-8 路径并等待应答。
@@ -113,7 +146,8 @@ F="-std=c99 -Wall -Wextra -Wpedantic -Werror -Iinclude -Isrc -DBOLE_AGENT_STATIC
 clang $F -o <build-dir>/fake tests/fake_runtime.c src/json.c
 clang $F -o <build-dir>/tj tests/test_json.c src/json.c && <build-dir>/tj
 clang $F -o <build-dir>/te tests/test_error.c src/error.c && <build-dir>/te
-clang $F -D"FAKE_RUNTIME_PATH=\"<build-dir>/fake\"" -o <build-dir>/ta \
+clang $F -D"FAKE_RUNTIME_PATH=\"<build-dir>/fake\"" \
+  -D"BOLE_FIXTURE_DIR=\"$PWD/tests/fixtures\"" -o <build-dir>/ta \
   tests/test_agent.c src/agent.c src/error.c src/json.c src/rpc.c \
   src/transport.c src/platform_posix.c -lpthread && <build-dir>/ta
 ```

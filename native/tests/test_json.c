@@ -167,6 +167,11 @@ static void test_numbers(void) {
   assert(bole_json_bool(bole_json_member_get(members, count, "e"), &b) == 0 && b == 1);
   assert(bole_json_bool(bole_json_member_get(members, count, "f"), &b) == 0 && b == 0);
   assert(bole_json_bool(bole_json_member_get(members, count, "g"), &b) != 0);
+
+  const char* overflow = "{\"a\":18446744073709551616,\"b\":9223372036854775808}";
+  assert(bole_json_parse_object(overflow, strlen(overflow), members, 16, &count) == 0);
+  assert(bole_json_u64(bole_json_member_get(members, count, "a"), &u) != 0);
+  assert(bole_json_i64(bole_json_member_get(members, count, "b"), &i) != 0);
 }
 
 static void test_builder_growth(void) {
