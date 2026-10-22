@@ -1,16 +1,16 @@
 # 伯乐智能体 SDK 交付：确认结果与剩余事项（2026-10-21）
 
 用途：记录《任务说明：伯乐智能体SDK交付_20261020_zt.md》七项待确认事项的答复结果，以及由此产生的新工作与待验证技术点。
-状态：七项已全部答复并形成结论，交付范围也已划清（SDK 与示例由我方负责，IDE 侧绑定与集成归伙伴）。交付版本定为 harness `0.1.7-alpha.2`，仓库为 `bole-code-dev`，仍有两处小信息与一处技术验证待完成。
-核实基线：最初对照 `@deepseek-ai/dsh@0.1.2-rc.1` 核实；协议方法表、transport 接缝与事件词汇表已在 `0.1.7-alpha.2` 上复核，结论不变。
+状态：七项已全部答复并形成结论，交付范围也已划清（SDK 与示例由我方负责，IDE 侧绑定与集成归伙伴）。交付版本定为 harness `0.1.7-alpha.2`，仓库为 `bole-code-dev`，仍有两处小信息与一处集成确认待完成。
+核实基线：最初对照 `@deepseek-ai/dsh@0.1.2-rc.1` 核实；2026-10-21 在 `0.1.7-alpha.2` 沙盒上复核，结论有三处修正——协议扩展改为「补丁层 + 自建插件」（见 2.1），RSI 控制权归运行时、SDK 只转发（见 2.2，待确认），token 增量来源改为瞬时帧（见第五节）。实测记录见第八节。
 
 ## 一、结论速览
 
 | 编号 | 事项 | 结论 | 后续动作 |
 | --- | --- | --- | --- |
 | 1 | SDK 交付形态 | 已确认：以客户轻量化接入为准，接受 DLL + 随包运行时进程 | 按下方「轻量化」四条落成验收条款 |
-| 2 | 是否允许扩展 SDK 协议 | 已确认：允许，实现方式不设限 | 采用就地修改 `sdk/server`，见 2.1 |
-| 3 | RSI 开关的定义 | 已确认：插件热卸载语义，卸载经验记忆插件即关闭 | 先验证热卸载可行性，见 2.2 |
+| 2 | 是否允许扩展 SDK 协议 | 已确认：允许，实现方式不设限 | 采用补丁层 + 自建插件，官方包不改，见 2.1 |
+| 3 | RSI 开关的定义 | 已确认：运行时只关「经验注入」；控制权与入口待确认 | SDK 只转发，不挂载产品插件，见 2.2 |
 | 4 | 验证阶段口径 | 已确认：映射到伯乐完成检查 | 写入事件模型文档 |
 | 5 | 模型服务参数 | 基本够用：仅缺模型 ID 与是否需要密钥，现场可拉取 | 见 2.3 |
 | 6 | 伙伴技术栈 | 已确认 TypeScript 为主，不影响 SDK 构建；范围划清为 SDK 与示例归我方、绑定与集成归伙伴 | 见 2.4 |
@@ -26,7 +26,9 @@
 
 已确认：允许扩展协议，实现方式不设限。
 
-实现路线：就地修改仓库内的 `sdk/server` 与 `sdk/protocol`，增加方法、通知与消息类型。选择就地的原因是 `sdk/server` 独占 stdio transport（`transport.onRequest` 只有一个注册方），没有给第二方插件留出注册方法的接缝；改完的包单独编译后覆盖运行时里的同名包，其余包继续用 npm 版本。
+实现路线：**不改 DSH 源码，走「补丁层 + 自建插件」**。运行时组合里官方 `sdk-jsonrpc-server` 条目由补丁置为 `disabled`，再插入自建插件 `@bole/sdk-server`；插件复用官方公开导出的 `HarnessSdkJsonRpcServer` 与 `JsonRpcLineTransport`，在同一个 stdio transport 上接管请求分发与通知发送，新增消息的类型定义放在自建包内。
+
+原方案「就地修改 `sdk/server`」的依据是 transport 只有一个注册位，而这条依据只说明了不能追加 handler，不说明不能换掉整个条目：官方 `sdk-app` 的补丁本身就用 `disabled` + `insert` 组装（`bundle/sdk-app/cordis.patch.yml`），补丁层的条目替换语义是既有能力。改走补丁后，`sdk/server` 与 `sdk/protocol` 保持 npm 原样，运行时升级不需要重新打补丁。2026-10-21 已在 `0.1.7-alpha.2` 沙盒上用插件探针实测：禁用官方条目、由自建插件接管 stdout 后，自定义方法正常返回，退出码 0。
 
 协议在官方三项（initialize / session/prompt / shutdown）之上增加：
 
@@ -37,17 +39,28 @@
 | `assistant/delta` | 事件 | token 级增量，带合并与限频 | 必做，对应需求第 10 条与实时回传 |
 | `session/trace` | 请求 | 按 task 导出执行轨迹 | 可降级为导出会话事件日志，接口化放二期 |
 
-### 2.2 RSI 开关：热卸载语义与一个待验证点（对应第 3 项）
+三项新增的落点：
 
-结论与负责人一致：这不是 SDK 的安装卸载，SDK 安装一次即在位；开关是 DSH 本身的插件热卸载，关闭时把经验记忆插件卸载掉，相关内容不再进入系统提示词，功能即视为关闭。
+- `session/cancel`：`ctx.agents.get(sessionId)` 取得 agent（agent id 与 session id 同值），调 `Agent.cancel({ kind: 'user' }, { keepInbox: false })`；请求立即返回，结束事实由事件流给出。
+- `assistant/delta`：订阅瞬时帧 `agent/assistant-stream`（`start` / `chunk` / `end`），对 `chunk.type === 'text-delta'` 做合并与限频。它不是持久化会话事件，因此不参与重放，也不补发。
+- `rsi.state` / `rsi.set`：开关由运行时执行，桥接插件只转发并投影状态；不 import、不挂载记忆插件。具体入口待确认（见 2.2）。
 
-需要写清楚的三个细节：
+### 2.2 RSI 开关：控制权归运行时，SDK 只转发（待负责人确认）
 
-1. 卸载的范围是整组插件，因此停止的不只是提示词注入，还包括回合末的完成检查与经验库读写。若只想停提示词注入而保留完成检查，应改用插件内的 `announceToAgent` 子开关，两者的可观测事件不同。
-2. 卸载时机：配置文件开关在运行时启动时生效；接口触发的切换在下一个 turn 生效，不在 turn 中途卸载。
-3. 状态事件：`rsi.state { enabled, source }`，切换时立刻发出。RSI 关闭时不会出现 VERIFY 事件，这一点必须写进事件模型文档。
+已确认的事实（2026-10-21）：经验沉淀与经验库更新都在线下完成，运行时链路里经验记忆插件只有「把经验注入提示词」这一个动作，因此关闭注入就等于关闭 RSI。
 
-待验证技术点：运行时热卸载依赖 Cordis 的 fiber dispose。仓库里的 `mount-once.ts` 在 fiber dispose 时会解除挂载标记，理论上支持「卸载后再挂载」，但插件已注册的系统提示上下文、技能与 agent 钩子能否干净撤销，需要在真实运行时验证一次。若热卸载不稳定，退化为「下个会话生效」或「重启运行时生效」，并在文档中如实写明。这一项放在 M1 最前面做，结论决定接口文档怎么写。
+待确认的问题（2026-10-22 复核）：开关由谁执行。
+
+- **方案 B（SDK 服务挂载记忆插件）暂缓**：由最外层 SDK 挂载产品核心插件属于依赖倒置；SDK 还要知道包名、导出形状、配置与挂载位置，产品一升级就失配。
+- **倾向方案 A**：记忆插件仍由产品侧（profile / bundle）挂载，产品暴露一个开关入口（服务方法、事件或 settings 写入口）；SDK 只把 `rsi.set` 转发过去，并把状态投影成 `rsi.state`。
+
+三条边界（无论最终选哪种）：
+
+1. **SDK 不组合产品功能**：记忆插件永远由产品 profile 挂载，SDK 不 import、不挂载、不持有它的 fiber。补丁层只为补事件和承载 SDK 入口，不承担产品功能组合。
+2. **没有入口就不假装有**：运行时未提供开关入口时，`rsi.set` 返回 `RSI_UNAVAILABLE`（3xxx）；`rsi.state` 只按配置文件在启动时报一次，不伪造。
+3. **最坏情况要重议验收**：若产品最终只有配置文件开关（重启生效），SDK 侧只剩状态观测，验收第 3 条「接口开关生效」需要与负责人重议，不能默默降级。
+
+待办：与负责人确认开关入口的形式与归属。确认前，02/03 只冻结 `rsi.state` 的字段与时机，不冻结 `rsi.set` 的实现方式。
 
 ### 2.3 模型配置：现有信息基本够用（对应第 5 项）
 
@@ -99,11 +112,12 @@
 
 ## 三、确认结果产生的新工作项
 
-1. 验证插件热卸载可行性，结论决定 RSI 接口文档的写法（M1 最前）。
+1. 与负责人确认 RSI 的控制权与开关入口（服务方法 / 事件 / settings）；SDK 不挂载产品插件。确认前不冻结 `rsi.set` 的实现。
 2. 冻结协议方法表：cancel / rsi.state / assistant.delta 必做，trace 可降级。
 3. 补控制台示例与界面示例（Electron，可退为 Win32）；不提供 TypeScript 工程与 IDE 插件，集成指南内可放一段调用片段。
 4. 补齐模型 ID 与是否需要 API Key 两项信息，离线包配置定稿。
-5. 事件模型文档中写明 RSI 状态与 VERIFY 的联动关系。
+5. 事件模型文档中写明 RSI 状态与 VERIFY 的联动关系，把 `TEXT_DELTA` 的来源改写为 `agent/assistant-stream`，并确认「完成检查只在线下」时 `VERIFY_CHECK` 是保留还是删除。
+6. 把协议扩展落成两个包：插件 `@bole/sdk-server` 与补丁层 `@bole/sdk-app`；`sdk/server`、`sdk/protocol` 不改。两包的依赖写死 `0.1.7-alpha.2`，不使用 `workspace:*`，以便装进 npm 运行时树。
 
 ## 四、已经确定、不需要再确认的事项
 
@@ -134,24 +148,28 @@
 | --- | --- |
 | 交付基线为 harness `0.1.7-alpha.2` | `bole-code-dev` 各包版本字段 |
 | 官方 SDK 协议只有 3 个方法（initialize / session/prompt / shutdown） | `sdk/protocol/src/types.ts` 与 `sdk/server/src/server.ts` |
-| 服务端独占 stdio transport，没有第二方注册方法的接缝 | `sdk/server/src/index.ts` 的 `transport.onRequest` |
+| 官方服务器类与传输类公开导出，可被自建插件复用 | `sdk/server/src/index.ts` 的 `export * from './server.ts'`、`sdk/protocol` 的导出 |
+| 补丁层可禁用官方条目并插入自有插件（已实测） | `bundle/sdk-app/cordis.patch.yml` 的 `disabled` + `insert`；0.1.7 沙盒探针 |
 | 取消能力在内核存在，但未暴露到 SDK 协议 | `@deepseek-ai/dsh-agent` 的 `Agent.cancel(cause, options)` |
 | 会话事件词汇表没有 verify 类事件 | `@deepseek-ai/dsh-session` 的 `KNOWN_SESSION_EVENT_TYPES` |
-| token 级增量是会话事件，可做合并与限频 | 同上，事件表含 `assistant/chunk` |
+| 会话事件表没有 `assistant/chunk`（60 个已知类型） | `core/session/src/known-event-types.ts` |
+| token 级增量是瞬时帧 `agent/assistant-stream`，可做合并与限频 | `core/agent/src/runtime-types.ts` 的事件声明、`core/agent-loop/src/assistant-stream.ts` 的帧发送 |
 | 模型配置只需 provider、显示名、地址、协议与至少一个模型 | `client/ui-settings-models` 的 README |
 | 上下文窗口与最大输出可由「获取可用模型」带入 | 同上的 `llm/discoverModels` 说明 |
 | 运行时由壳与本体两段组成 | `@deepseek-ai/dsh` 包仅 22 KB，功能全在依赖的数百个包里 |
-| 完成检查留下可观测事实 | bole-memory 的 `maybeBounceCompletion`（源码在 bole-agent 仓库） |
-| 记忆插件默认惰性 | bole-memory 的 `DEFAULT_SETTINGS` |
-| 挂载标记在 fiber dispose 时解除，热重挂理论可行 | bole-memory 的 `mount-once.ts` |
-| RSI 处理组与验证器用同一补丁的开关区分 | bole-agent 的 `integrations/terminal_bench/` |
+| 公共 npm 有 `0.1.7-alpha.2`，安装 511 包 / 538 MB / 约 2 分钟 | 本次 `npm install` 实测 |
+| PyPI 的 `deepseek-harness-runtime-bin` 没有 0.1.7 的 win-x64 wheel | PyPI 版本表（最接近的是 0.1.5rc1、0.2.1rc2） |
+| `node-pty` 自带 win32-x64 预编译；`koffi` 无预编译，安装时需联网取预编译或现场编译 | 本次解包与安装日志 |
+| npm 11 默认拦截生命周期脚本，Windows 打包机需先 `npm approve-scripts` | 本次安装告警 |
+| 运行时链路里经验记忆只有「注入提示词」一个动作；沉淀与完成检查在线下完成 | 负责人 2026-10-21 确认 |
+| 关闭方式：控制权归运行时，SDK 只转发；方案 B（SDK 挂载）因依赖倒置暂缓 | 2026-10-22 复核；待负责人确认入口 |
 
 ## 六、下一步
 
 1. 冻结三份契约：协议方法表、事件模型、C 头文件。
-2. 搭运行时沙盒：装 `0.1.7-alpha.2`，确认 `--profile sdk` 可用，摸清真实报文。
-3. 验证插件热卸载（半天到一天），结论决定 RSI 文档写法。
-4. 环境准备：MSVC 与 pnpm。
+2. 运行时沙盒已跑通（见第八节）；把安装目录、假模型与探针脚本固化成可复用的验收沙盒。
+3. 与负责人确认经验记忆插件的开关入口（形式、归属、是否可运行时切换）；需要能取到该插件或其接口说明的渠道。
+4. 环境准备：Windows 上装 Build Tools（正式交付件）与 pnpm；WSL 侧装 mingw-w64 供日常迭代。
 5. M3 前备齐第四节资料清单，用自备干净 Windows 虚拟机演练四条验收标准。
 
 ## 七、确认记录
@@ -159,9 +177,25 @@
 | 编号 | 结论 | 确认人 | 日期 | 备注 |
 | --- | --- | --- | --- | --- |
 | 1 | 满足客户轻量化接入即可 | 项目负责人 | 2026-10-21 | 接受 DLL + 随包运行时，落成四条验收条款 |
-| 2 | 可以，最上层加 patch 挂载，增加自定义事件 | 项目负责人 | 2026-10-21 | 实现方式不设限，实际采用就地修改 `sdk/server` |
-| 3 | 不是 SDK 安装卸载，是 DSH 插件热卸载 | 项目负责人 | 2026-10-21 | 待验证热卸载可行性 |
+| 2 | 可以，最上层加 patch 挂载，增加自定义事件 | 项目负责人 | 2026-10-21 | 实现方式不设限，采用补丁层 + 自建插件 |
+| 3 | RSI 只控制经验注入，运行时不做沉淀 | 项目负责人 | 2026-10-21 | 关闭注入即关闭 RSI；10-22 复核：控制权归运行时 |
 | 4 | 确认：验证映射到伯乐完成检查 | 项目负责人 | 2026-10-21 | 写入事件模型文档 |
 | 5 | 现有信息基本够用 | 项目负责人 | 2026-10-21 | 仅需模型 ID 与是否需要密钥 |
 | 6 | 主体语言 TypeScript，不影响 SDK 构建；只交付 SDK 与示例，对接由伙伴负责 | 项目负责人 | 2026-10-21 | 边界见 2.4 |
 | 7 | 保障客户交付，提前备资料 | 项目负责人 | 2026-10-21 | 按内部清单执行 |
+
+## 八、2026-10-21 实测记录（0.1.7-alpha.2 沙盒）
+
+| 验证 | 做法 | 结果 |
+| --- | --- | --- |
+| 版本可获得 | `npm install @deepseek-ai/dsh@0.1.7-alpha.2` | 511 包、538 MB、约 2 分钟；`dsh --version` 输出 `0.1.7-alpha.2` |
+| sdk profile 可用 | `dsh --profile sdk --dump-config`，以及带 EOF 直接启动 | 组合树完整，进程退出码 0 |
+| SDK 协议全链路 | 向 stdin 依次写入 initialize / session/prompt / shutdown | initialize 0.6–0.8 秒返回；prompt 产生 turn/start、step/start、tool/call、tool/result、turn/end 等事件；shutdown 后进程退出码 0 |
+| 真实工具调用 | 本地假 OpenAI 兼容服务 + `--patch` 注入 provider `bole` | 模型发起 `read` 调用，工具执行并回传结果，第二轮给出最终文本，`turn/end` 为 completed |
+| 补丁层替换官方服务器 | `disabled: true` 官方条目 + insert 本地插件接管 stdout | 自定义方法 `bole/ping` 正常返回，退出码 0 |
+| token 增量来源 | 插件订阅 `agent/assistant-stream` | 收到 start、text-delta×2、end 帧；会话事件中没有 `assistant/chunk` |
+| 无模型凭据时的行为 | 不配 key 直接 prompt | initialize 成功；turn 走到 `turn/end` 报 `no api key for provider` |
+
+环境限制：内网模型端点 `192.168.19.203:9001` 从开发机不可达，DeepSeek 官方密钥未配置，真实模型效果需在内网机器上复验；经验记忆插件不在公共 npm，其开关入口与控制权归属仍需与产品侧确认。
+
+沙盒脚本未入库（临时目录），含假模型、注入补丁与两个插件探针；需要时按上表复现。
