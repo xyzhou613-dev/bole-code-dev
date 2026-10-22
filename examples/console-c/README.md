@@ -8,3 +8,31 @@ bole_console <runtime_dir> <dsh_home> "算一下 2+2"
 ```
 
 事件按 `bole_event.type` 分支打印；真实集成里应把 `TEXT_DELTA` 追加到 UI，`TASK_FINISHED/FAILED` 结束一轮。
+
+## 构建
+
+```bash
+cmake -S examples/console-c -B build/console -DCMAKE_BUILD_TYPE=Release
+cmake --build build/console -j4
+```
+
+## C2/M0 证据
+
+开发机准备好锁定的运行时树、桥接插件和经验包后：
+
+```bash
+BOLE_DEV_RUNTIME=<runtime> node examples/console-c/smoke.mjs \
+  build/console/bole_console
+```
+
+脚本会启动 mock 模型（工具调用 `mcp__toy__add`）和玩具 MCP，装配临时运行时，
+执行一次「工具调用 → 结果 → 终态」，并打印耗时。期望输出包含：
+
+```text
+PASS tool started
+PASS tool finished
+PASS task finished
+PASS exit code
+TIMING <毫秒> ms
+PASS console-c C2/M0 tool call
+```

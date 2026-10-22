@@ -14,7 +14,8 @@ $root = Join-Path $OutDir "bole-agent-sdk-win-x64"
 
 if (Test-Path $OutDir) { Remove-Item -Recurse -Force $OutDir }
 New-Item -ItemType Directory -Force -Path `
-  "$root\bin", "$root\runtime", "$root\tools", "$root\samples", "$root\docs" | Out-Null
+  "$root\bin", "$root\runtime\config", "$root\home", "$root\tools\toy-mcp",
+  "$root\samples\console-c", "$root\samples\gui-win32", "$root\docs" | Out-Null
 
 # 1. C SDK binaries and header.
 Copy-Item "$NativeBuild\bole_agent.dll", "$NativeBuild\bole_agent.lib", "$NativeBuild\bole_agent.h" $root\bin
@@ -23,26 +24,30 @@ if (Test-Path "$NativeBuild\bole_agent.pdb") { Copy-Item "$NativeBuild\bole_agen
 # 2. Runtime tree as installed (never rebuilt on the target machine).
 Copy-Item "$RuntimeDir\*" "$root\runtime" -Recurse
 Copy-Item "native\include\bole_agent.h" $root\bin -Force
+Copy-Item "runtime\packages\sdk-app\cordis.patch.yml" "$root\runtime\cordis.patch.yml" -Force
+Copy-Item "runtime\config\*" "$root\runtime\config" -Recurse -ErrorAction SilentlyContinue
 
 # 3. Toy MCP and samples (sources, so the package is an integration reference).
-Copy-Item "examples\toy-mcp\*" $root\tools -Recurse -ErrorAction SilentlyContinue
-Copy-Item "examples\console-c\*" $root\samples -Recurse
-Copy-Item "examples\gui-win32\*" $root\samples -Recurse
+Copy-Item "examples\toy-mcp\*" "$root\tools\toy-mcp" -Recurse
+Copy-Item "examples\console-c\*" "$root\samples\console-c" -Recurse
+Copy-Item "examples\gui-win32\*" "$root\samples\gui-win32" -Recurse
 
 # 4. Delivery documents (A/B keep them under docs/delivery).
 Copy-Item "docs\delivery\*" $root\docs -Recurse -ErrorAction SilentlyContinue
 Copy-Item "packaging\install.ps1" $root
 
 # 5. Version manifest and checksums.
+$runtimeVersion = (Get-Content "$RuntimeDir\node_modules\@deepseek-ai\dsh\package.json" -Raw | ConvertFrom-Json).version
 $version = [ordered]@{
-  package      = "bole-agent-sdk"
-  builtAt      = (Get-Date).ToUniversalTime().ToString("o")
-  node         = (& "$root\runtime\node.exe" --version)
-  dsh          = (Get-Content "$RuntimeDir\node_modules\@deepseek-ai\dsh\package.json" -Raw | ConvertFrom-Json).version
-  sdkServer    = "0.1.0"
-  pluginPatch  = "runtime\cordis.patch.yml"
-  nativeAbi    = "0x00010000"
-  dshLocked    = "0.1.7-alpha.2"
+  sdk       = "0.1.0"
+  abi       = "1.0.0"
+  protocol  = 1
+  runtime   = $runtimeVersion
+  node      = (& "$root\runtime\node.exe" --version)
+  presets   = @("standard", "rsi-infer")
+  experience = @{}
+  tools     = @{ "toy-mcp" = "0.1.0" }
+  builtAt   = (Get-Date).ToUniversalTime().ToString("o")
 }
 $version | ConvertTo-Json | Set-Content "$root\VERSION.json" -Encoding UTF8
 

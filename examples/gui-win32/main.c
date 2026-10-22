@@ -101,7 +101,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_COMMAND: on_command(hwnd, LOWORD(wp)); return 0;
     case WM_BOLE_EVENT: {
       char* text = (char*)lp;
-      SetWindowTextA((HWND)wp == ID_STATUS ? g_status : g_result, text);
+      SetWindowTextA((int)wp == ID_STATUS ? g_status : g_result, text);
       free(text);
       return 0;
     }

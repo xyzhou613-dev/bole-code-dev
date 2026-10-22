@@ -10,19 +10,26 @@
 #include "bole_agent.h"
 
 static volatile int g_done = 0;
+static volatile int g_failed = 0;
 
-static void on_event(void* user, const bole_event* event) {
+static void BOLE_CALL on_event(void* user, const bole_event* event) {
   (void)user;
   switch (event->type) {
     case BOLE_EVENT_RUNTIME_READY: printf("[ready]\n"); break;
     case BOLE_EVENT_RUNTIME_FAILED:
-    case BOLE_EVENT_RUNTIME_EXITED: printf("[runtime] %s\n", event->payload_json); break;
+    case BOLE_EVENT_RUNTIME_EXITED:
+      printf("[runtime] %s\n", event->payload_json);
+      g_failed = 1; g_done = 1;
+      break;
     case BOLE_EVENT_TEXT_DELTA: printf("%s", event->payload_json); break;
     case BOLE_EVENT_ASSISTANT_MESSAGE: printf("\n[answer] %s\n", event->payload_json); break;
     case BOLE_EVENT_TOOL_CALL_STARTED: printf("[tool] start %s\n", event->payload_json); break;
     case BOLE_EVENT_TOOL_CALL_FINISHED: printf("[tool] done %s\n", event->payload_json); break;
     case BOLE_EVENT_TASK_FINISHED: printf("[task] finished\n"); g_done = 1; break;
-    case BOLE_EVENT_TASK_FAILED: printf("[task] failed %s\n", event->payload_json); g_done = 1; break;
+    case BOLE_EVENT_TASK_FAILED:
+      printf("[task] failed %s\n", event->payload_json);
+      g_failed = 1; g_done = 1;
+      break;
     default: break;
   }
 }
@@ -54,6 +61,7 @@ int main(int argc, char** argv) {
     usleep(100 * 1000);
 #endif
   }
+  if (!g_done) { fprintf(stderr, "timeout waiting for the task\n"); }
   bole_release(handle);
-  return 0;
+  return g_done && !g_failed ? 0 : 1;
 }

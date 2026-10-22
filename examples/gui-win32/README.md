@@ -4,9 +4,15 @@
 `PostMessage`，UI 线程更新控件——长任务期间窗口不卡。
 
 ```powershell
-set BOLE_RUNTIME_DIR=<离线包>\runtime
-set BOLE_DSH_HOME=<离线包>\runtime\home
+$env:BOLE_RUNTIME_DIR = "<离线包>\runtime"
+$env:BOLE_DSH_HOME = "<离线包>\home"
 ```
 
-构建：把 `main.c` 加入任意 Win32 工程并链接 `bole_agent.lib`（或 CMake 里
-`add_executable(bole_gui WIN32 main.c)` + `target_link_libraries(bole_gui PRIVATE bole_agent)`）。
+构建：
+
+```powershell
+cmake -S examples/gui-win32 -B build/gui -G "Visual Studio 17 2022" -A x64
+cmake --build build/gui --config Release
+```
+
+也可以把 `main.c` 加入任意 Win32 工程并链接 `bole_agent.lib`。

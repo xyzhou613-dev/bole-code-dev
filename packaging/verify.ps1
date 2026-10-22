@@ -20,5 +20,6 @@ foreach ($rel in $expect) {
   Write-Host "ok $rel"
 }
 $version = Get-Content (Join-Path $Root "VERSION.json") -Raw | ConvertFrom-Json
-if ($version.dshLocked -ne "0.1.7-alpha.2") { throw "unexpected dsh lock: $($version.dshLocked)" }
+if ($version.runtime -ne "0.1.7-alpha.2") { throw "unexpected runtime version: $($version.runtime)" }
+if ($version.protocol -ne 1) { throw "unexpected protocol: $($version.protocol)" }
 Write-Host "verify ok"
