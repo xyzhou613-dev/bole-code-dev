@@ -8,3 +8,10 @@ if(NOT WIN32)
   find_package(Threads REQUIRED)
   target_link_libraries(bole_console PRIVATE Threads::Threads m)
 endif()
+
+add_executable(bole_selfcheck selfcheck.c)
+target_link_libraries(bole_selfcheck PRIVATE bole_agent)
+if(NOT WIN32)
+  target_link_libraries(bole_selfcheck PRIVATE Threads::Threads m)
+endif()
+

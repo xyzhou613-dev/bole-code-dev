@@ -15,7 +15,7 @@ bole-agent-sdk-win-x64/
 ├── bin/       bole_agent.dll/.lib/.h
 ├── runtime/   node.exe + dsh 依赖树 + cordis.patch.yml + home/
 ├── tools/     玩具 MCP
-├── samples/   console-c、gui-win32
+├── samples/   console-c（含 bole_selfcheck）、gui-win32
 ├── docs/      四份交付文档
 ├── VERSION.json
 ├── SHA256SUMS
@@ -35,6 +35,7 @@ bole-agent-sdk-win-x64/
 验证状态（2026-10-22）：Windows + MSVC BuildTools 2022（`/MT`）构建
 `bole_agent.dll/.lib`，`build-offline.ps1` → `install.ps1` → `verify.ps1` 全过；
 从安装目录运行 MSVC `console-c` 完成 `mcp__toy__add(1,2) -> 3` 与
-`TASK_FINISHED`。MSVC `ctest` 的 json/error/fixtures 3/3 通过；GUI 已用 MSVC 构建，
+`TASK_FINISHED`，`bole_selfcheck.exe` 的 ready/preset/tool/rsi/cancel/trace 全过。
+MSVC `ctest` 的 json/error/platform/fixtures 4/4 通过；GUI 已用 MSVC 构建，
 未启动（需要交互桌面）。
 

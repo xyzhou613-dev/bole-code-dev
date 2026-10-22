@@ -113,10 +113,15 @@ Get-FileHash .\bin\bole_agent.dll -Algorithm SHA256
 ```
 
 `verify.ps1` 检查文件、版本、profile 自定义包，并做一次 `--dump-config` 组合校验。
-启动/握手/工具/取消/轨迹的完整自检脚本属于 B8，尚未随包；在那之前用
-`samples/console-c/bole_console.exe` + 玩具 MCP 手工执行下表第 2–10 项。
+`verify.ps1` 之后运行 C 自检：
 
-下表是 B8 自检脚本的目标检查表：
+```powershell
+.\samples\console-c\bole_selfcheck.exe `
+  .\runtime .\home "用玩具工具计算 1+2"
+```
+
+它覆盖下表第 2–8 项（启动、preset、工具、RSI、取消、trace）；第 9 项无外网和
+第 10 项的进程清理由现场网络策略/任务管理器复核。下表保留为 B8 验收检查表：
 
 | # | 检查 | 通过标准 |
 | --- | --- | --- |

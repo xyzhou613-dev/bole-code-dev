@@ -127,6 +127,10 @@ Copy-Item (Join-Path $repo "examples\gui-win32\*") (Join-Path $root "samples\gui
 if ($ConsoleExe -ne "") {
   if (!(Test-Path $ConsoleExe)) { throw "console binary not found: $ConsoleExe" }
   Copy-Item $ConsoleExe (Join-Path $root "samples\console-c\bole_console.exe") -Force
+  $selfcheck = Join-Path (Split-Path $ConsoleExe) "bole_selfcheck.exe"
+  if (Test-Path $selfcheck) {
+    Copy-Item $selfcheck (Join-Path $root "samples\console-c\bole_selfcheck.exe") -Force
+  }
   Copy-Item (Join-Path $root "bin\bole_agent.dll") (Join-Path $root "samples\console-c") -Force
 }
 if ($GuiExe -ne "") {

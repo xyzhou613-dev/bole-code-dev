@@ -36,3 +36,15 @@ PASS exit code
 TIMING <毫秒> ms
 PASS console-c C2/M0 tool call
 ```
+
+## B8 自检
+
+包内 `bole_selfcheck.exe` 用当前 runtime/home 跑一次 ABI 自检：
+
+```powershell
+.\bole_selfcheck.exe <runtime_dir> <dsh_home> "用玩具工具计算 1+2"
+```
+
+检查项：runtime ready、preset registry、standard 工具调用完成、rsi-infer 收据、
+取消后 `aborted`、trace 导出。失败时打印首个失败检查并以非零码退出。
+
