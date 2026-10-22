@@ -114,6 +114,13 @@ try {
   await client.request('session/prompt', { sessionId: 's-a2', contentBlocks: [{ type: 'text', text: 'hello' }] })
   const firstEnd = await waitEvent(client, 's-a2', 'turn/end')
   assert(firstEnd.data.reason.kind === 'completed', `first turn did not complete: ${JSON.stringify(firstEnd.data.reason)}`)
+  const projectedDeadline = Date.now() + 5_000
+  while (!client.notifications.some((frame) => frame.method === 'bole.event'
+    && frame.params?.sessionId === 's-a2'
+    && frame.params.event.type === 50)) {
+    if (Date.now() > projectedDeadline) throw new Error('projected TASK_FINISHED was not observed')
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
   const projected = client.notifications
     .filter((frame) => frame.method === 'bole.event' && frame.params?.sessionId === 's-a2')
     .map((frame) => frame.params.event.type)

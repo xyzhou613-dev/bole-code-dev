@@ -86,6 +86,13 @@ try {
   const mark = client.notifications.length
   await client.request('session/prompt', { sessionId: 's-e2e', contentBlocks: [{ type: 'text', text: '用玩具工具计算 2+3' }] })
   await waitEvent(client, 's-e2e', 'turn/end', mark)
+  const terminalDeadline = Date.now() + 5_000
+  while (!client.notifications.some((frame) => frame.method === 'bole.event'
+    && frame.params?.sessionId === 's-e2e'
+    && (frame.params.event.type === 50 || frame.params.event.type === 51))) {
+    if (Date.now() > terminalDeadline) throw new Error('projected terminal event was not observed')
+    await sleep(10)
+  }
   const elapsed = Date.now() - started
 
   const events = client.notifications
