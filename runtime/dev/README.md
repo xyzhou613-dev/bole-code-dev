@@ -35,10 +35,12 @@ node runtime/dev/build-experience.mjs
 - `runtime/packages/sdk-server/node_modules/@types` → `runtime/dev/node_modules/@types`；
 - `<runtime>/node_modules/@bole/sdk-server` → 插件包，供 `@bole/sdk-server` 裸名解析。
 
-## 冒烟
+## 冒烟 / 配置 / E2E
 
 ```sh
-node runtime/dev/smoke.mjs
+node runtime/dev/smoke.mjs          # initialize / shutdown / stdout 协议纯度
+node runtime/dev/check-config.mjs   # 补丁行、preset 面、审批、外网、重复行
+node runtime/dev/e2e.mjs            # 模型 -> 玩具 MCP -> 工具结果
 ```
 
 断言：stdout 首帧是 JSON-RPC 2.0；`initialize` 返回 `serverInfo`；`shutdown` 后退出码 0；stderr 有 `[bole-sdk-server] loaded` 且没有 `did not activate`。
@@ -79,6 +81,16 @@ node runtime/dev/fixtures.mjs --from .dev/tool-ok.jsonl --scenario happy-tool --
 ```
 
 输出 `runtime/.dev/<scenario>.jsonl`，一行一个原始 stdout 帧。fixture 清洗、占位替换与 manifest 在 A3 补齐；正式 fixture 放 `native/tests/fixtures/`。
+
+## 打包
+
+```sh
+node runtime/dev/build-experience.mjs
+node runtime/dev/pack.mjs
+node runtime/dev/pack-test.mjs     # 把 tarball 装进 profile，用裸名启动
+```
+
+`runtime/dist/` 是本地产物，不提交。`runtime/version.inputs.json` 给 B 的 `VERSION.json` 提供输入。
 
 ## 注意
 

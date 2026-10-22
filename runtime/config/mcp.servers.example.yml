@@ -1,0 +1,30 @@
+# MCP server examples for <DSH_HOME>/cordis.patch.yml.
+# SDK v1 supports configuration-file declaration + restart only; there is no
+# runtime registration API. Tool names become `mcp__<serverName>__<tool>`.
+
+# stdio: the runtime spawns the server as a child process. `command` must be an
+# absolute executable path on the target machine; use <runtime-dir>/node.exe
+# for Node servers shipped with the package.
+- insert:
+    - id: mcp-toy
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: stdio
+        serverName: toy
+        command: '<runtime-dir>/node.exe'
+        args: ['<package-root>/tools/toy-mcp/server.mjs']
+        cwd: '<package-root>'
+        toolCallTimeoutMs: 10000
+        failOnStartupError: false
+
+# streamable-http: an external service reachable from the target machine.
+# - insert:
+#     - id: mcp-internal
+#       name: '@deepseek-ai/dsh-mcp-client'
+#       config:
+#         transport: streamable-http
+#         serverName: internal
+#         url: 'http://<mcp-host>:<port>/mcp'
+#         headers: {}
+#         toolCallTimeoutMs: 30000
+#         failOnStartupError: false

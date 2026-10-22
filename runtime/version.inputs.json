@@ -1,0 +1,13 @@
+{
+  "sdk": "0.1.0",
+  "abi": "1.0.0",
+  "protocol": 1,
+  "harness": "0.1.7-alpha.2",
+  "node": "24.x",
+  "plugins": {
+    "@bole/sdk-server": "0.1.0",
+    "@deepseek-ai/dsh-skill-bole-experience": "0.1.7-alpha.2"
+  },
+  "presets": ["standard", "rsi-infer"],
+  "toyMcp": "0.1.0"
+}

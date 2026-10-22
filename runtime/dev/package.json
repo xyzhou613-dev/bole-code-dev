@@ -6,11 +6,16 @@
   "description": "Development harness for the Bole SDK runtime plugin. Not shipped in the offline package.",
   "scripts": {
     "build": "tsc -p ../packages/sdk-server/tsconfig.json",
+    "build:experience": "node build-experience.mjs",
     "smoke": "node smoke.mjs",
     "capture": "node capture.mjs",
-    "e2e": "node e2e.mjs",
+    "fixtures": "node fixtures.mjs",
     "session": "node session.mjs",
-    "trace": "node trace.mjs"
+    "trace": "node trace.mjs",
+    "e2e": "node e2e.mjs",
+    "check-config": "node check-config.mjs",
+    "pack": "node pack.mjs",
+    "pack:test": "node pack-test.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.0",

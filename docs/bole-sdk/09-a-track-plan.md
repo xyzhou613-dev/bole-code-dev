@@ -248,6 +248,9 @@ DoD：tarball 在干净树安装后 `initialize` 成功；版本输入齐；fixt
 | A3 事件投影 | 核心完成 | 13 类可投影事件 + 增量合并；真实覆盖 10/11/12/14/15/22/30/31/50/51；4 个 fixtures |
 | A4 RSI/preset 面 | 核心完成 | 两个 preset 创建、空白切换、`PRESET_LOCKED`、`rsi.set/get`、默认状态；收据 `delivered`/`available`/`unsupported-model` 实测 |
 | A5 轨迹 | 核心完成 | 活会话/冷会话导出、turn 过滤、`TRACE_WRITE_FAILED`、重启后冷导出实测 |
+| A6 补丁层 | 完成 | `check-config` 15 项全过；`capabilities.sandbox` 实测为 danger-full-access |
+| A7 运行时组装/玩具 MCP | 完成 | toy MCP 启动 70ms；E2E 模型→MCP→结果 1.7s；home/MCP 模板 |
+| A8 打包输入 | 核心完成 | tarball 内容正确；profile 裸名安装、经验包、initialize/create/shutdown 通过；`version.inputs.json` |
 
 fixtures：`happy-tool`、`text-turn`、`cancel-mid-turn`、`model-error`、`rsi-delivered`、`rsi-available`、`rsi-unsupported`。`max-tokens`、`long-tool-output`、`tool-error` 等 A5 后再补。
 

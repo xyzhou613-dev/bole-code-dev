@@ -1,0 +1,10 @@
+{
+  "name": "@bole/toy-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Zero-dependency MCP server with side-effect-free tools for SDK acceptance runs",
+  "main": "server.mjs",
+  "bin": { "bole-toy-mcp": "server.mjs" },
+  "files": ["server.mjs", "README.md"]
+}
