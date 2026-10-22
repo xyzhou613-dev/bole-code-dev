@@ -96,6 +96,47 @@
       "timeoutMs": 60000
     },
     {
+      "file": "plan-updated.jsonl",
+      "description": "Todo write projected as PLAN_UPDATED (kind=todos)",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        15,
+        10,
+        11,
+        14,
+        22,
+        30,
+        13,
+        31,
+        12,
+        50
+      ],
+      "terminal": "completed",
+      "truncated": false,
+      "timeoutMs": 60000
+    },
+    {
+      "file": "reasoning.jsonl",
+      "description": "Text and reasoning deltas coalesced into separate channels",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        15,
+        10,
+        11,
+        14,
+        22,
+        12,
+        50
+      ],
+      "terminal": "completed",
+      "truncated": false,
+      "timeoutMs": 60000
+    },
+    {
       "file": "rsi-available.jsonl",
       "description": "RSI-infer session with a rsi-available experience receipt",
       "capturedAt": "2026-10-22",
