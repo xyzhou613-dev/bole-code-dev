@@ -7,6 +7,7 @@
  * Usage: node runtime/dev/e2e.mjs
  */
 
+import { execFileSync } from 'node:child_process'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
@@ -72,6 +73,8 @@ await writeFile(mcpPatch, `- insert:
         cwd: ${JSON.stringify(repoRoot)}
         toolCallTimeoutMs: 10000
         failOnStartupError: true
+        reconnect:
+          enabled: false
 `)
 
 const home = await prepareHome('bole-e2e-')
@@ -115,6 +118,28 @@ try {
   console.log('PASS MCP tool call: mcp__toy__add(2,3) -> 5')
   console.log('PASS final assistant message and completed turn')
   console.log(`PASS E2E elapsed: ${elapsed}ms (budget 60000ms)`)
+
+  // Kill the toy MCP child and verify the runtime survives a failed tool call.
+  const toyPath = join(repoRoot, 'examples/toy-mcp/server.mjs')
+  const pids = execFileSync('pgrep', ['-f', toyPath], { encoding: 'utf8' })
+    .trim().split(/\s+/).map(Number).filter((pid) => Number.isInteger(pid) && pid > 0)
+  assert(pids.length > 0, 'toy MCP child process was not found')
+  for (const pid of pids) {
+    try { process.kill(pid, 'SIGKILL') } catch { /* already gone */ }
+  }
+  await sleep(300)
+  const brokenMark = client.notifications.length
+  await client.request('session/prompt', { sessionId: 's-e2e', contentBlocks: [{ type: 'text', text: '再算一次 2+3' }] })
+  await waitEvent(client, 's-e2e', 'turn/end', brokenMark)
+  const broken = client.notifications
+    .slice(brokenMark)
+    .filter((frame) => frame.method === 'bole.event' && frame.params?.sessionId === 's-e2e')
+    .map((frame) => frame.params.event)
+  const failedTool = broken.find((event) => event.type === 31)
+  const survived = broken.find((event) => event.type === 50 || event.type === 51)
+  assert(failedTool?.payload.isError === true, `killed MCP tool call did not fail: ${JSON.stringify(failedTool?.payload)}`)
+  assert(survived?.type === 50 && survived.payload.outcome === 'completed', `runtime did not survive the killed MCP: ${JSON.stringify(survived)}`)
+  console.log('PASS killed toy MCP: tool error, runtime continued')
 
   await client.request('shutdown', {}, 15_000)
   const exit = await client.waitExit(20_000)

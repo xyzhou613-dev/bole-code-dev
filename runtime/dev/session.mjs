@@ -76,6 +76,7 @@ await writeFile(mockPatch, `- id: llm-pi-ai
         apiKeyEnv: BOLE_API_KEY
         models:
           - id: qwen3.8-27b
+          - id: Ornith-1.5-35B-A3B
           - id: test-model
 `)
 
@@ -186,7 +187,13 @@ try {
 
   client = new RpcClient(spawnRuntime({ home, patches: [devPatchFile, mockPatch] }))
   await client.request('initialize', { cwd: repoRoot, provider: 'bole', model: 'qwen3.8-27b' })
+  const resumeMark = client.notifications.length
   const resumed = await client.request('session/resume', { sessionId: 's-a2' })
+  await sleep(300)
+  const replayed = client.notifications
+    .slice(resumeMark)
+    .filter((frame) => frame.method === 'session.event' && frame.params?.sessionId === 's-a2')
+  assert(replayed.length === 0, `session/resume replayed ${replayed.length} historical event(s)`)
   assert(resumed?.sessionId === 's-a2', `session/resume returned ${JSON.stringify(resumed)}`)
   assert(resumed.cwd === repoRoot, `session/resume cwd mismatch: ${JSON.stringify(resumed.cwd)}`)
   assert(resumed.preset === 'standard', `session/resume preset mismatch: ${JSON.stringify(resumed.preset)}`)
@@ -212,13 +219,37 @@ try {
   const thirdExit = await client.waitExit(20_000)
   assert(thirdExit.code === 0, `third runtime exit ${String(thirdExit.code)}\n${client.stderrTail()}`)
 
+  client = new RpcClient(spawnRuntime({ home, patches: [devPatchFile, mockPatch] }))
+  await client.request('initialize', { cwd: repoRoot, provider: 'bole', model: 'Ornith-1.5-35B-A3B' })
+  await client.request('session/create', { sessionId: 's-a4-ornith', preset: 'rsi-infer' })
+  const ornithMark = client.notifications.length
+  await client.request('session/prompt', { sessionId: 's-a4-ornith', contentBlocks: [{ type: 'text', text: '启动一个服务并保持运行' }] })
+  await waitEvent(client, 's-a4-ornith', 'turn/end', ornithMark)
+  const ornithReceipt = client.notifications
+    .slice(ornithMark)
+    .filter((frame) => frame.method === 'bole.event' && frame.params?.sessionId === 's-a4-ornith'
+      && frame.params.event.type === 15 && frame.params.event.payload?.source === 'receipt')
+    .at(-1)
+  assert(ornithReceipt?.params?.event?.payload?.delivery?.status === 'delivered',
+    `Ornith receipt was not delivered: ${JSON.stringify(ornithReceipt?.params?.event?.payload)}`)
+  assert(ornithReceipt.params.event.payload.delivery.bundleId === 'ornith-v18',
+    `Ornith receipt used the wrong bundle: ${JSON.stringify(ornithReceipt.params.event.payload.delivery)}`)
+  const ornithModel = client.notifications
+    .slice(ornithMark)
+    .find((frame) => frame.method === 'bole.event' && frame.params?.sessionId === 's-a4-ornith'
+      && frame.params.event.type === 14 && frame.params.event.payload?.model === 'Ornith-1.5-35B-A3B')
+  assert(ornithModel !== undefined, 'MODEL_SELECTED did not report Ornith')
+  await client.request('shutdown', {}, 15_000)
+  const fourthExit = await client.waitExit(20_000)
+  assert(fourthExit.code === 0, `fourth runtime exit ${String(fourthExit.code)}\n${client.stderrTail()}`)
+
   console.log('PASS session/create + duplicate SESSION_EXISTS + preset/missing errors')
   console.log('PASS prompt + completed turn + projected events')
 
   console.log('PASS cancel: idle NO_ACTIVE_TASK, active turn aborted')
-  console.log('PASS RSI receipts: delivered / available / unsupported-model; standard has none')
+  console.log('PASS RSI receipts: delivered / available / unsupported-model / Ornith; standard has none')
   console.log('PASS setPreset locked + rsi.set/rsi.get')
-  console.log('PASS resume after restart')
+  console.log('PASS resume after restart without replay')
 } catch (error) {
   console.error(`FAIL session: ${error instanceof Error ? error.message : String(error)}`)
   if (client !== undefined) console.error(client.stderrTail(40))
