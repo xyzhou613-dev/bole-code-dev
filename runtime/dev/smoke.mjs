@@ -46,6 +46,16 @@ try {
   const parseError = client.frames.find((frame) => frame.error?.code === -32700)
   assert(parseError?.error?.data?.code === 'PROTOCOL_PARSE_FAILED', `parse error was not answered with PROTOCOL_PARSE_FAILED: ${JSON.stringify(parseError)}`)
 
+  for (const line of client.lines) {
+    let frame
+    try {
+      frame = JSON.parse(line)
+    } catch {
+      throw new Error(`stdout carried a non-JSON line: ${line.slice(0, 200)}`)
+    }
+    assert(frame?.jsonrpc === '2.0', `stdout carried a non-JSON-RPC frame: ${line.slice(0, 200)}`)
+  }
+
   const shutdown = await client.request('shutdown', {}, 15_000)
   assert(shutdown !== null && typeof shutdown === 'object', 'shutdown result is not an object')
   const exit = await client.waitExit(20_000)

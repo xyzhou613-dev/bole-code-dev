@@ -10,6 +10,9 @@
 ## 准备
 
 ```sh
+# 与脚本默认值一致；已有运行时树时改成自己的路径
+export BOLE_DEV_RUNTIME="${BOLE_DEV_RUNTIME:-$HOME/.bole-dev/runtime}"
+
 # 1. 运行时树（一次性）
 mkdir -p "$BOLE_DEV_RUNTIME"
 npm --prefix "$BOLE_DEV_RUNTIME" init -y
