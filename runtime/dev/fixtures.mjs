@@ -72,6 +72,7 @@ const entry = {
   model: 'mock openai-completions (bole)',
   expectedEventTypes: types,
   terminal,
+  truncated: frames.some((frame) => frame.method === 'bole.event' && frame.params.event.payload?.truncated === true),
   timeoutMs: 60_000,
 }
 manifest.fixtures = [...(manifest.fixtures ?? []).filter((item) => item.file !== entry.file), entry]

@@ -39,6 +39,46 @@
       "timeoutMs": 60000
     },
     {
+      "file": "long-tool-output.jsonl",
+      "description": "10KB tool output truncated to 8KB in the event stream",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        15,
+        10,
+        11,
+        14,
+        22,
+        30,
+        31,
+        12,
+        50
+      ],
+      "terminal": "completed",
+      "truncated": true,
+      "timeoutMs": 60000
+    },
+    {
+      "file": "max-tokens.jsonl",
+      "description": "Output token ceiling; terminal TASK_FINISHED max_tokens",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        15,
+        10,
+        11,
+        14,
+        22,
+        12,
+        50
+      ],
+      "terminal": "max_tokens",
+      "truncated": false,
+      "timeoutMs": 60000
+    },
+    {
       "file": "model-error.jsonl",
       "description": "Model request fails after retries; terminal TASK_FAILED",
       "capturedAt": "2026-10-22",
@@ -125,6 +165,27 @@
         50
       ],
       "terminal": "completed",
+      "timeoutMs": 60000
+    },
+    {
+      "file": "tool-error.jsonl",
+      "description": "Tool argument failure; turn still completed",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        15,
+        10,
+        11,
+        14,
+        22,
+        30,
+        31,
+        12,
+        50
+      ],
+      "terminal": "completed",
+      "truncated": false,
       "timeoutMs": 60000
     }
   ]

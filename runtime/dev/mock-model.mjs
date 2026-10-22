@@ -52,7 +52,7 @@ function defaultReply(body) {
  * @param options - port hint and optional reply function.
  * @returns listening URL, recorded calls, and a close function.
  */
-export async function startMockModel({ port = 0, reply = defaultReply, delayMs = Number(process.env.MOCK_DELAY_MS ?? 0), httpError = Number(process.env.MOCK_HTTP_ERROR ?? 0) } = {}) {
+export async function startMockModel({ port = 0, reply = defaultReply, delayMs = Number(process.env.MOCK_DELAY_MS ?? 0), httpError = Number(process.env.MOCK_HTTP_ERROR ?? 0), finishReason = process.env.MOCK_FINISH ?? 'stop' } = {}) {
   const calls = []
   const server = createServer((request, response) => {
     if (request.method !== 'POST') {
@@ -122,7 +122,7 @@ export async function startMockModel({ port = 0, reply = defaultReply, delayMs =
       write({ role: 'assistant' })
       if (result.toolCall === undefined) {
         for (const text of chunksOf(result.text)) write({ content: text })
-        write({}, 'stop')
+        write({}, finishReason)
       } else {
         write({
           tool_calls: [{
