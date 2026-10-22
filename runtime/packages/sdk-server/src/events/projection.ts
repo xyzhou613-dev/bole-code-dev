@@ -80,16 +80,30 @@ export function truncateUtf8(text: string, maxBytes: number): { text: string; tr
 }
 
 /**
- * Join text blocks and mark non-text blocks with a placeholder.
+ * Join the text blocks of an assistant message. Tool calls and other
+ * non-text blocks are separate events, never message text.
  * @param content - message content blocks.
  * @returns joined text.
  */
-function joinText(content: readonly { type?: unknown; text?: unknown }[]): string {
+function assistantText(content: readonly { type?: unknown; text?: unknown }[]): string {
+  let result = ''
+  for (const block of content) {
+    if (block.type === 'text' && typeof block.text === 'string') result += block.text
+  }
+  return result
+}
+
+/**
+ * Join a tool result's text blocks and mark binary blocks with a placeholder.
+ * @param content - tool result content blocks.
+ * @returns the bounded-result text source.
+ */
+function resultText(content: readonly { type?: unknown; text?: unknown }[]): string {
   let result = ''
   for (const block of content) {
     if (block.type === 'text' && typeof block.text === 'string') result += block.text
     else if (block.type === 'image') result += '[image]'
-    else if (block.type !== undefined) result += `[${String(block.type)}]`
+    else if (block.type === 'file') result += '[file]'
   }
   return result
 }
@@ -232,7 +246,7 @@ export function projectSessionEvent(
       const step = Number(data.step ?? state.step)
       const message = (data.message ?? {}) as Record<string, unknown>
       const content = Array.isArray(message.content) ? message.content as { type?: unknown; text?: unknown }[] : []
-      const text = truncateUtf8(joinText(content), TRUNCATE_MESSAGE)
+      const text = truncateUtf8(assistantText(content), TRUNCATE_MESSAGE)
       const reasoning = truncateUtf8(joinReasoning(content), TRUNCATE_MESSAGE)
       const payload: Record<string, unknown> = {
         turn,
@@ -283,7 +297,7 @@ export function projectSessionEvent(
       const message = (data.message ?? {}) as Record<string, unknown>
       const callId = String(message.toolCallId ?? '')
       const content = Array.isArray(message.content) ? message.content as { type?: unknown; text?: unknown }[] : []
-      const summary = truncateUtf8(joinText(content), TRUNCATE_RESULT)
+      const summary = truncateUtf8(resultText(content), TRUNCATE_RESULT)
       const payload: Record<string, unknown> = {
         callId,
         isError: message.isError === true,

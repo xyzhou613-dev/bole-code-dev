@@ -711,7 +711,7 @@ static void test_structural_overflow(void) {
 
 static void test_fixture_replay(void) {
   static const int cancel_types[] = {10, 15, 11, 14, 12, 50};
-  static const int happy_types[] = {10, 15, 11, 14, 22, 30, 31, 12, 11, 20, 22, 12, 50};
+  static const int happy_types[] = {15, 10, 15, 11, 14, 22, 30, 31, 12, 11, 20, 22, 12, 50};
   static const int model_error_types[] = {10, 15, 11, 14, 12, 51};
   static const int text_types[] = {10, 15, 11, 14, 20, 22, 12, 50};
   static const int long_output_types[] = {15, 10, 15, 11, 14, 22, 30, 31, 12, 11, 20, 22, 12, 50};

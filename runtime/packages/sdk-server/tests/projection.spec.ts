@@ -96,6 +96,32 @@ describe('projectSessionEvent', () => {
     expect(projected?.payload.interrupted).toBe(true)
   })
 
+  it('keeps tool calls out of assistant text and uses placeholders only for tool results', () => {
+    const current = state()
+    const assistant = projectSessionEvent(event('assistant/message', {
+      turn: 1,
+      step: 1,
+      message: {
+        id: 'm-tool',
+        content: [
+          { type: 'text', text: 'reading' },
+          { type: 'tool-call', id: 'call-1', name: 'read', arguments: '{}' },
+        ],
+      },
+    }), current, options)
+    expect(assistant?.payload.text).toBe('reading')
+
+    const result = projectSessionEvent(event('tool/result', {
+      turn: 1,
+      step: 1,
+      message: {
+        toolCallId: 'call-1',
+        content: [{ type: 'text', text: 'x' }, { type: 'image', attachment: { id: 'a' } }],
+      },
+    }), current, options)
+    expect(result?.payload.resultSummary).toBe('x[image]')
+  })
+
   it('projects tool calls, correlates the result name, and bounds args/summary', () => {
     const current = state()
     current.turn = 1
