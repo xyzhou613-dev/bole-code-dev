@@ -1,19 +1,18 @@
 /**
  * Bole SDK JSON-RPC bridge.
  *
- * Stage 1: own the stdio transport with the frozen protocol's framing and
- * error rules, and dispatch Bole methods before delegating the official
- * `initialize` / `session/prompt` / `shutdown` methods to the official server.
- * The session-aware server (create/resume/cancel/setPreset/trace/RSI) is the
- * next step; see docs/bole-sdk/09-a-track-plan.md.
+ * Stage 2: own the stdio transport with the frozen protocol's framing and
+ * error rules, and serve the session methods through the in-package server.
+ * Event projection, RSI, and trace are the next steps; see
+ * docs/bole-sdk/09-a-track-plan.md.
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-agent'
 import type { Readable, Writable } from 'node:stream'
-import { HarnessSdkJsonRpcServer } from '@deepseek-ai/dsh-sdk-jsonrpc-server'
-import { BoleLineTransport, BoleRpcError } from './transport.js'
+import { BoleSdkServer } from './server.js'
+import { BoleLineTransport } from './transport.js'
 
 export const name = 'bole-sdk-server'
 
@@ -28,8 +27,6 @@ export interface Config {
   /** Maximum UTF-8 bytes per JSON-RPC frame; defaults to 64 MiB. */
   maxLineBytes?: number
 }
-
-const OFFICIAL_METHODS = new Set(['initialize', 'session/prompt', 'shutdown'])
 
 /** The runtime facts advertised by `initialize`; 02-protocol.md §2. */
 interface SdkCapabilities {
@@ -73,7 +70,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     ...(config.maxLineBytes === undefined ? {} : { maxLineBytes: config.maxLineBytes }),
     onFatal: () => { setImmediate(() => { void disposeAndExit() }) },
   })
-  const server = new HarnessSdkJsonRpcServer(ctx, transport, { maxTokensAsSuccess: true })
+  const server = new BoleSdkServer(ctx, transport)
 
   function disposeAndExit(): Promise<void> {
     exitTask ??= (async () => {
@@ -88,11 +85,9 @@ export function apply(ctx: Context, config: Config = {}): void {
     if (method === 'initialize') {
       await ctx.get('loader')?.await()
     }
-    // A protocol probe used by the A1 spike; replaced by the session methods.
+    // A protocol probe used by the development smoke; removed once fixtures
+    // exercise the session methods directly.
     if (method === 'bole/echo') return { echo: params }
-    if (!OFFICIAL_METHODS.has(method)) {
-      throw new BoleRpcError(-32601, `method not found: ${method}`, { code: 'METHOD_NOT_FOUND' })
-    }
     const result = await server.handleRequest(method, params)
     if (method === 'initialize') {
       return {
