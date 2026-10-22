@@ -84,6 +84,12 @@ target_compile_definitions(bole_test_error PRIVATE BOLE_AGENT_STATIC)
 add_test(NAME json  COMMAND bole_test_json)
 add_test(NAME error COMMAND bole_test_error)
 
+if(WIN32)
+  add_executable(bole_test_platform tests/test_platform_win32.c ${BOLE_SOURCE_DIR}/platform_win32.c)
+  target_include_directories(bole_test_platform PRIVATE ${BOLE_SOURCE_DIR})
+  add_test(NAME platform COMMAND bole_test_platform)
+endif()
+
 find_program(BOLE_NODE_EXECUTABLE node)
 
 # The end-to-end contract test uses POSIX temp directories, getline, and a

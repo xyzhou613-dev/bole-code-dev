@@ -505,6 +505,12 @@ int bole_mkdir_p(const char* path) {
   memcpy(copy, path, length + 1);
   for (size_t i = 1; i <= length; i++) {
     if (copy[i] == '/' || copy[i] == '\\' || copy[i] == '\0') {
+      /* Skip the drive root ("C:") and the leading separator of a UNC path;
+         CreateDirectoryW rejects both as standalone names. */
+      if ((i == 2 && copy[1] == ':')
+          || (i == 1 && (copy[0] == '\\' || copy[0] == '/'))) {
+        continue;
+      }
       char saved = copy[i];
       copy[i] = '\0';
       wchar_t* wide = utf8_to_wide(copy);
