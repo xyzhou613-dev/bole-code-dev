@@ -37,7 +37,7 @@ Copy-Item "packaging\install.ps1" $root
 $version = [ordered]@{
   package      = "bole-agent-sdk"
   builtAt      = (Get-Date).ToUniversalTime().ToString("o")
-  node         = (& "$Root\runtime\node.exe" --version)
+  node         = (& "$root\runtime\node.exe" --version)
   dsh          = (Get-Content "$RuntimeDir\node_modules\@deepseek-ai\dsh\package.json" -Raw | ConvertFrom-Json).version
   sdkServer    = "0.1.0"
   pluginPatch  = "runtime\cordis.patch.yml"
