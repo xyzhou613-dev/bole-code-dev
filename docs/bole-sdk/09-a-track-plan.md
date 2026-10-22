@@ -247,7 +247,7 @@ DoD：tarball 在干净树安装后 `initialize` 成功；版本输入齐；fixt
 | A2 会话方法 | 完成 | create/duplicate/prompt/cancel/setPreset/resume 冒烟全绿；无 preset 面时 `PRESET_NOT_FOUND`/`RSI_UNAVAILABLE` |
 | A3 事件投影 | 核心完成 | 13 类可投影事件 + 增量合并；真实覆盖 10/11/12/14/15/22/30/31/50/51；4 个 fixtures |
 | A4 RSI/preset 面 | 核心完成 | 两个 preset 创建、空白切换、`PRESET_LOCKED`、`rsi.set/get`、默认状态；收据 `delivered`/`available`/`unsupported-model` 实测 |
-| A5 轨迹 | 未开始 | — |
+| A5 轨迹 | 核心完成 | 活会话/冷会话导出、turn 过滤、`TRACE_WRITE_FAILED`、重启后冷导出实测 |
 
 fixtures：`happy-tool`、`text-turn`、`cancel-mid-turn`、`model-error`、`rsi-delivered`、`rsi-available`、`rsi-unsupported`。`max-tokens`、`long-tool-output`、`tool-error` 等 A5 后再补。
 

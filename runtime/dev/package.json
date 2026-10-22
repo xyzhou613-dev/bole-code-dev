@@ -9,7 +9,8 @@
     "smoke": "node smoke.mjs",
     "capture": "node capture.mjs",
     "e2e": "node e2e.mjs",
-    "session": "node session.mjs"
+    "session": "node session.mjs",
+    "trace": "node trace.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.0",

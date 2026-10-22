@@ -12,7 +12,8 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { isAbsolute, resolve } from 'node:path'
+import { writeFile, stat } from 'node:fs/promises'
+import { dirname, isAbsolute, resolve } from 'node:path'
 import type { Agent, AgentHandle, AgentOptions, AgentSetup } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import { admitEncodedImages, type EncodedImageAttachment, type ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
@@ -137,6 +138,25 @@ function presetFromLog(events: readonly SessionEvent[]): string | undefined {
     if (event.type === 'agent-preset/selected') preset = event.data.agentPreset
   }
   return preset
+}
+
+/**
+ * Select the events of one turn, including events without a `turn` field that
+ * sit between its start and end boundaries.
+ * @param events - complete raw log.
+ * @param turn - requested turn, 1-based.
+ * @returns the matching events in log order.
+ */
+function filterTurn(events: readonly SessionEvent[], turn: number): SessionEvent[] {
+  const selected: SessionEvent[] = []
+  let active = false
+  for (const event of events) {
+    const data = event.data as Record<string, unknown>
+    if (event.type === 'turn/start' && data.turn === turn) active = true
+    if (active || data.turn === turn) selected.push(event)
+    if (active && event.type === 'turn/end' && data.turn === turn) active = false
+  }
+  return selected
 }
 
 /**
@@ -448,6 +468,49 @@ export class BoleSdkServer {
   }
 
   /**
+   * Export the raw session log as JSONL, optionally for one turn.
+   * @param params - session id, optional turn, target path.
+   * @returns the written path and event count.
+   */
+  async trace(params: Record<string, unknown>): Promise<{ path: string; eventCount: number }> {
+    this.assertInitialized()
+    const sessionId = requireString(params.sessionId, 'sessionId')
+    const requested = requireString(params.path, 'path')
+    const turn = params.turn === undefined ? 0 : Number(params.turn)
+    if (!Number.isSafeInteger(turn) || turn < 0) throw invalid('turn must be a non-negative safe integer')
+    let events: readonly SessionEvent[]
+    const record = this.sessions.get(sessionId)
+    if (record !== undefined) {
+      events = record.handle.agent.session.snapshotEvents()
+    } else {
+      const query = this.ctx.get('sessionQuery')
+      if (query === undefined) throw business('PERSISTENCE_UNAVAILABLE', 'session query is required to trace a cold session')
+      try {
+        const snapshot = await query.readSession(sessionId as SessionId)
+        events = snapshot.events
+      } catch (error) {
+        if (error instanceof SessionQueryError && error.code === 'SESSION_QUERY_SESSION_NOT_FOUND') {
+          throw business('SESSION_NOT_FOUND', `session "${sessionId}" not found`)
+        }
+        if (error instanceof SessionPersistenceNotFoundError) {
+          throw business('SESSION_NOT_FOUND', `session "${sessionId}" not found`)
+        }
+        throw business('SESSION_NOT_RESUMABLE', `session "${sessionId}" cannot be read: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+    const selected = turn === 0 ? events : filterTurn(events, turn)
+    const target = isAbsolute(requested) ? requested : resolve(this.cwd, requested)
+    try {
+      const parent = await stat(dirname(target))
+      if (!parent.isDirectory()) throw new Error('parent is not a directory')
+      await writeFile(target, selected.length === 0 ? '' : `${selected.map(event => JSON.stringify(event)).join('\n')}\n`)
+    } catch (error) {
+      throw business('TRACE_WRITE_FAILED', `cannot write trace "${target}": ${error instanceof Error ? error.message : String(error)}`)
+    }
+    return { path: target, eventCount: selected.length }
+  }
+
+  /**
    * Dispose server-owned sessions, subscriptions, and the fallback adapter.
    * @returns an empty result.
    */
@@ -480,6 +543,8 @@ export class BoleSdkServer {
         return this.rsiSet(params ?? {})
       case 'rsi.get':
         return this.rsiGet(params ?? {})
+      case 'session/trace':
+        return this.trace(params ?? {})
       case 'shutdown':
         return this.shutdown()
       default:
