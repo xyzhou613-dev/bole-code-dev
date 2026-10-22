@@ -1,0 +1,50 @@
+# Bole SDK profile patch layer over `--profile sdk` (dsh-base + dsh-sdk-app).
+#
+# Delivery: copy this file to <runtime_dir>/cordis.patch.yml and install
+# @bole/sdk-server into the runtime tree. Development can point `name` at an
+# absolute .ts path and run `pnpm dsh` (tsx) instead.
+#
+# The preset plane (agent-preset-registry + standard/rsi-infer declarations)
+# replaces the base agent-plane rows in the next stage; see 01-plan.md §7.
+
+- id: sdk-jsonrpc-server
+  disabled: true
+
+- insert:
+    - id: bole-sdk-server
+      name: '@bole/sdk-server'
+      inject: [sdkAppStartup, loader]
+
+# The target gateway's real model id (base ships `bole-model` as a placeholder).
+- id: agent-default-model
+  config:
+    provider: bole
+    model: qwen3.8-27b
+
+- id: llm-pi-ai
+  config:
+    providers:
+      bole:
+        displayName: Bole Model
+        api: openai-completions
+        baseURL: http://192.168.19.203:9001/v1
+        apiKey: local
+        models:
+          - id: qwen3.8-27b
+
+# No answerer exists in a headless runtime; `ask` would fail closed.
+- id: approval
+  config:
+    policy: never
+
+# The runtime must not reach the public internet.
+- id: web
+  disabled: true
+- id: web-search-deepseek
+  disabled: true
+- id: web-fetch-http
+  disabled: true
+- id: tool-web
+  disabled: true
+- id: session-telemetry-otel
+  disabled: true

@@ -1,8 +1,8 @@
 # 伯乐智能体 SDK 交付：确认结果与剩余事项（2026-10-22 修订）
 
 用途：记录《任务说明：伯乐智能体SDK交付_20261020_zt.md》待确认事项的答复结果，以及由此产生的新工作与待验证技术点。
-状态：七项已答复并形成结论，交付范围已划清（SDK 与示例由我方负责，IDE 侧绑定与集成归伙伴）。交付版本定为 harness `0.1.7-alpha.2`，仓库 `bole-code-dev`（本地目录名 `bole-dsh-packages-develop`），分支 `docs/bole-sdk`。2026-10-22 在仓库源码上复核，修正两处关键前提：**RSI 是 agent preset（模式）而不是服务开关**（见 2.2）；**本基线没有可投影的「验证」阶段**（见 2.5）。
-核实基线：最初对照 `@deepseek-ai/dsh@0.1.2-rc.1`；2026-10-21 在 `0.1.7-alpha.2` 沙盒上复核；2026-10-22 在 `bole-code-dev` 源码上复核 preset 面、验证、运行组合与工具面，依据见第五节。
+状态：七项已答复并形成结论，交付范围已划清（SDK 与示例由我方负责，IDE 侧绑定与集成归伙伴）。交付版本定为 harness `0.1.7-alpha.2`，交付仓库分支 `docs/bole-sdk`。2026-10-22 在仓库源码上复核，修正两处关键前提：**RSI 是 agent preset（模式）而不是服务开关**（见 2.2）；**本基线没有可投影的「验证」阶段**（见 2.5）。
+核实基线：最初对照 `@deepseek-ai/dsh@0.1.2-rc.1`；2026-10-21 在 `0.1.7-alpha.2` 沙盒上复核；2026-10-22 在交付仓库源码上复核 preset 面、验证、运行组合与工具面，依据见第五节。
 
 ## 一、结论速览
 
@@ -112,7 +112,7 @@ SDK 离线包**只挂 `standard` 与 `rsi-infer` 两条**（10-22 确认）；`p
       bole:
         displayName: Bole Model
         api: openai-completions
-        baseURL: http://192.168.19.203:9001/v1
+        baseURL: http://<model-gateway>/v1   # 地址由部署配置提供
         apiKey: local          # 占位；私有网关接受任意 key
         models: [{ id: bole-model }]
 ```
@@ -152,7 +152,7 @@ SDK 离线包**只挂 `standard` 与 `rsi-infer` 两条**（10-22 确认）；`p
 
 - 会话事件词汇表 60 项里没有 verify 类事件（`core/session/src/known-event-types.ts`）。
 - 仓库里没有「完成检查」的实现；`skill/skill-bole-experience` 只在 model 请求前注入只读经验并记收据，不做检查、不写回记忆库。
-- 在本机完整宿主 `/root/bole-deploy`（本仓库 `packages/` 覆盖到上游 tag `dsh-v0.1.7-alpha.2` 工作区）上再查一遍：没有完成检查实现，也没有额外的伯乐记忆包；唯一的「完成检查」字样在 typert 生成器文档里，与 RSI 无关。
+- 在完整宿主工作区（本仓库 `packages/` 覆盖到上游 tag `dsh-v0.1.7-alpha.2` 的 pnpm 工作区）上再查一遍：没有完成检查实现，也没有额外的伯乐记忆包；唯一的「完成检查」字样在 typert 生成器文档里，与 RSI 无关。
 - 因此运行时没有可投影的「验证」阶段。
 
 结论：**暂缓**。`VERIFY_CHECK` 的定义保留在事件模型里，但本运行时不产生、不承诺送达；等产品侧（若完整 bole-agent 侧确有完成检查）给出会话事件或 SDK 可达的服务方法，再冻结映射关系。对伙伴的接口说明要写明：验证阶段暂不可观测，事件序列不会为它伪造状态（验收第 5 条不受影响，但任务书第 5 条的「验证」阶段只能标注暂缓）。
@@ -174,6 +174,28 @@ SDK 离线包**只挂 `standard` 与 `rsi-infer` 两条**（10-22 确认）；`p
 - **轨迹**：`session/trace` 支持按 `turn` 过滤，落点是会话日志（内存或持久化 JSONL），由自建插件实现，不依赖 Web 的 `session-log-export`（那是浏览器下载）。
 - **恢复**：新增 `session/resume`，落点 `ctx.agents.resume`；要求 `sessionPersistence` 与 `sessions` 查询服务，preset 定义缺失时拒绝恢复。
 - **模型事件**：`MODEL_SELECTED` 只取 `request/header`（SDK 组合可用）；`model/selection` 由 `api/session-controller` 写入，SDK 运行时不挂这个包，不列为来源。模型在首个请求后与会话绑定，换模型要新建任务。
+
+### 2.8 开发取舍（10-22 第二轮确认）
+
+| 编号 | 事项 | 结论 | 落点 |
+| --- | --- | --- | --- |
+| 18 | 一进程多项目 | 支持：`session/create` 带可选 `cwd`；`bole_config` 带默认 `cwd`；沙箱按会话头 `cwd` 解析 | 02 §2、04 §2 |
+| 19 | 图片/附件输入 | v1 支持：保留 `bole_submit` 纯文本，另加 `bole_submit_blocks`（JSON content blocks）；协议沿用官方 text/image 块 | 02 §2、04 §3 |
+| 20 | 默认沙箱 | `workspace-write` + `approval.policy: never`；启动自检沙箱后端，不可用报 `SANDBOX_UNAVAILABLE`，允许配置切 `danger-full-access` | 01 §7、03 §2、04 §2 |
+| 21 | 原始事件 | 不透传；排障用 `session/trace` 导出原始 JSONL | 03 §2 |
+| 22 | 自建 TS 包位置 | 放 `runtime/packages/`（交付侧），不并进 `sdk/` 与 `bundle/` 包组 | 01 §4 |
+
+外部口径（同日，未改变契约）：验收机是「无外网但有内网」，模型为自部署，先按现有地址调用，不行再改；Windows 构建环境暂缓，先文档与分工；目标机安全策略（未签名 DLL / EDR）仍未知，按未签名交付并在文档写风险；两人已在现场；对外文档只用 Markdown，本轮只做文档与分工。验证阶段仍按 2.5 暂缓。
+
+### 2.9 分工前的文档冻结（10-22 第三轮）
+
+项目负责人要求：**先不继续开发，把约束与接口落成文档，供 A/B 两人分工**。执行口径：
+
+- 02/03/04 冻结 1.0；本轮补齐 05（测试）、07（离线包）、08（分工与接口）与 `docs/delivery/` 索引。
+- `runtime/packages/sdk-server` Stage 0 是 A 轨负责人的参考实现；B 轨（C 实现、测试、示例、打包）**未开始**，本会话不代 B 做实现决定。`prototypes/native-c-sdk/` 是未授权参考，不属于交付物，B 负责人可决定采用/丢弃/重写。开发暂停，按 08 的工作包领取。
+- 契约变更走 08 第三节：只增不改、先改 fixture、A+B 双签、同步 02/03/04 与 `bole_agent.h`。
+- 分工边界走 08 第二节：A 拥有 `runtime/packages/` 等，B 拥有 `native/`、`examples/console-c`、`examples/gui-win32`、`packaging/`、`docs/delivery/`；契约与 fixtures 共同拥有。
+- 文档不写本机绝对路径、用户名、机器名、临时目录；命令用 `$REPO` / `$HARNESS_WORKSPACE` / `$DEV_HOME` / `$PATCH_FILE` 或 `<...>` 占位符，环境地址写「由部署配置提供」。
 
 ## 三、确认结果产生的新工作项
 
@@ -201,6 +223,14 @@ SDK 离线包**只挂 `standard` 与 `rsi-infer` 两条**（10-22 确认）；`p
 | 工具注入 | v1 只支持配置文件声明 + 重启生效 | 已确认（10-22）；运行时注册二期 |
 | 离线包 preset | 只挂 `standard` + `rsi-infer` | 见 2.2 |
 | 交付基调 | 保障顺利交付，提前备资料 | 见下方清单 |
+| 会话 cwd | 按会话传，缺省回落默认 cwd | 见 2.8 第 18 项 |
+| 图片输入 | v1 支持文本 + 图片块 | 见 2.8 第 19 项 |
+| 默认沙箱 | workspace-write + never，可切 danger | 见 2.8 第 20 项 |
+| 原始事件 | 不透传，trace 导出 | 见 2.8 第 21 项 |
+| 自建包位置 | `runtime/packages/` | 见 2.8 第 22 项 |
+| 验收网络 | 无外网、有内网 | 自部署模型，先按现有地址调用 |
+| 对外文档 | Markdown | 本轮只做开发 |
+| Windows 构建 | 暂不处理 | 先出可运行代码 |
 
 交付资料清单（建议在 M3 前备齐）：
 
@@ -261,7 +291,7 @@ SDK 离线包**只挂 `standard` 与 `rsi-infer` 两条**（10-22 确认）；`p
 | 经验是只读注入：不写记忆库、不做在线自改进/审查/晋升 | 插件 README |
 | 目标网关模型 ID 为 `qwen3.8-27b`，在经验允许列表内 | 10-22 确认；插件 README 与 `assets/final-experiences.json`（`models: ["qwen3.8-27b", "Qwen3.8-27B"]`） |
 | 经验自动投递只对「启动 / 部署 / 保留服务」类公开任务出现；普通任务为 `available` | 插件 README 与 RSI-infer 交接「核查投递与隔离」段 |
-| 完整宿主 `/root/bole-deploy` 内也没有完成检查实现，没有额外伯乐记忆包 | 10-22 在 `packages/`、`apps/`、`docs/` 检索；`node_modules/@deepseek-ai` 下没有 bole 相关包 |
+| 完整宿主工作区内也没有完成检查实现，没有额外伯乐记忆包 | 10-22 在 `packages/`、`apps/`、`docs/` 检索；`node_modules/@deepseek-ai` 下没有 bole 相关包 |
 | base 的 agent 面是单会话全局组合，Web 已把它整体挪进 preset 面 | `bundle/web-app/cordis.patch.yml` 的「the agent plane moves behind agent presets」段 |
 
 ### 工具、网络与审批
@@ -278,13 +308,14 @@ SDK 离线包**只挂 `standard` 与 `rsi-infer` 两条**（10-22 确认）；`p
 | `node-pty` 自带 win32-x64 预编译；`koffi` 无预编译，安装时需联网取预编译或现场编译 | 10-21 解包与安装日志 |
 | PyPI 的 `deepseek-harness-runtime-bin` 没有 0.1.7 的 win-x64 wheel | 10-21 PyPI 版本表 |
 
-## 六、下一步
+## 六、下一步（2026-10-22 第三轮起：先文档后开发）
 
-1. 冻结三份契约：协议方法表、事件模型、C 头文件；本轮已把 RSI、取消、三层、thinking、运行组合的结论写进 02/03/04。
-2. 把 `0.1.7-alpha.2` 沙盒固化成可复用验收沙盒，并把脚本入库（现在只有记录，没有脚本）。
-3. 在真实 Windows 上跑 preset 面：模型用 `qwen3.8-27b` 与 `Ornith-1.5-35B-A3B` 各跑一轮，`standard` 与 `rsi-infer` 各建会话——`standard` 无收据；`rsi-infer` 在服务生命周期任务上验 `delivered`、在普通任务上验 `available`，并确认只加载当前模型对应的包；再把模型改成非允许 ID 验 `unsupported-model`。
-4. 环境准备：Windows 装 Build Tools（正式交付件）与 pnpm；WSL 侧装 mingw-w64 供日常迭代。
-5. M3 前备齐第四节资料清单，用自备干净 Windows 虚拟机断网演练四条验收标准。
+1. **文档签收**：项目负责人签收 02/03/04/header、05/07/08 与 `docs/delivery/` 索引；A/B 填 08 第十节领取表。
+2. **契约不变**：开发按 02/03/04 实现；变更走 08 第三节（fixture 先行、双方签字、只增不改）。
+3. **fixtures**：C1 先捕获真实 wire 报文入库；C 与插件用同一份回放。
+4. **M0**：控制台示例 + 玩具 MCP + 真实运行时跑通一次工具调用并计时。
+5. **preset 面**：A4 在真实 Windows 上跑——`qwen3.8-27b` 与 `Ornith-1.5-35B-A3B` 各一轮，`standard` / `rsi-infer` 各建会话；`standard` 无收据；`rsi-infer` 在服务生命周期任务上 `delivered`、普通任务 `available`、非允许模型 `unsupported-model`；确认只加载当前模型对应的包；空白期切换成功、首 turn 后 `locked`。Windows 环境按 10-22 口径暂缓。
+6. **M3**：干净 Windows 虚拟机（无外网、内网模型可达）演练四条验收标准。
 
 ## 七、确认记录
 
@@ -302,11 +333,17 @@ SDK 离线包**只挂 `standard` 与 `rsi-infer` 两条**（10-22 确认）；`p
 | 10 | thinking 也进事件流 | 项目负责人 | 2026-10-22 | 协议加 `channel`，事件拆两种 |
 | 11 | 用 `--profile sdk` + 补丁层；关外网面；approval=never | 项目负责人 | 2026-10-22 | 见 `01-plan.md` 第七节 |
 | 12 | RSI 集成在 RSI-infer 模式里，开/关即切模式 | 项目负责人 | 2026-10-22 | 见 2.2；`standard` 与 `rsi-infer` 都不改原四种模式 |
-| 13 | 有完成检查就映射，没有就暂缓 | 项目负责人 | 2026-10-22 | 复核：本仓库与完整宿主 `/root/bole-deploy` 都没有该实现，按暂缓执行 |
+| 13 | 有完成检查就映射，没有就暂缓 | 项目负责人 | 2026-10-22 | 复核：本仓库与完整宿主工作区都没有该实现，按暂缓执行 |
 | 14 | 网关模型 ID 是 `qwen3.8-27b` | 项目负责人 | 2026-10-22 | 命中经验允许列表；另一个允许模型是 Ornith-1.5-35B-A3B，两者各自加载对应经验 |
 | 15 | 离线包只挂 `standard` + `rsi-infer` | 项目负责人 | 2026-10-22 | 其余三种模式本期不随包 |
 | 16 | MCP v1 只支持配置文件声明 + 重启生效 | 项目负责人 | 2026-10-22 | 运行时注册放二期 |
 | 17 | 目标机支持 Windows 10 / 11 | 项目负责人 | 2026-10-22 | 不需要额外考虑，不做更老系统兼容 |
+| 18 | 一进程多项目 | 项目负责人 | 2026-10-22 | 按会话 cwd；`bole_config` 带默认 cwd |
+| 19 | 图片/附件输入 | 项目负责人 | 2026-10-22 | 加 `bole_submit_blocks`，保留纯文本入口 |
+| 20 | 默认沙箱 | 项目负责人 | 2026-10-22 | workspace-write + never，自检失败报码可切 danger |
+| 21 | 原始事件 | 项目负责人 | 2026-10-22 | 不透传；trace 导出原始 JSONL |
+| 22 | 自建 TS 包位置 | 项目负责人 | 2026-10-22 | `runtime/packages/`，不并包组 |
+| 23 | 先文档后开发，供分工；文档不写本机路径 | 项目负责人 | 2026-10-22 | 02/03/04 冻结；05/07/08 与 delivery 索引本轮补齐；A 轨 Stage 0 为 A 的参考，B 轨未开始；路径用占位符 |
 
 ## 八、实测记录
 
@@ -322,10 +359,21 @@ SDK 离线包**只挂 `standard` 与 `rsi-infer` 两条**（10-22 确认）；`p
 | token 增量来源 | 插件订阅 `agent/assistant-stream` | 收到 start、text-delta×2、end 帧；会话事件中没有 `assistant/chunk` |
 | 无模型凭据时的行为 | 不配 key 直接 prompt | initialize 成功；turn 走到 `turn/end` 报 `no api key for provider` |
 
-环境限制：内网模型端点 `192.168.19.203:9001` 从开发机不可达，DeepSeek 官方密钥未配置，真实模型效果需在内网机器上复验。
+环境限制：内网模型端点（地址由部署配置提供）从开发机不可达，DeepSeek 官方密钥未配置，真实模型效果需在内网机器上复验。
 
 ### 2026-10-22　源码复核（非沙盒）
 
-在 `bole-code-dev` 上核对第五节各项，确认：RSI 已是 preset（`rsi-infer`），经验插件在本仓库且公开；本基线无验证阶段信号；base 挂公网面且审批默认 `ask`；transport/initialize 的就绪边界与单槽位约束。另在本机完整宿主 `/root/bole-deploy` 上核对：`packages/` 是本仓库的拷贝加上游 tag，`apps/` 只有 cli/desktop/web，没有额外的伯乐记忆包或完成检查实现。未执行 preset 面的运行时验证——需要在 Windows 上按第六节第 3 条补。
+在交付仓库上核对第五节各项，确认：RSI 已是 preset（`rsi-infer`），经验插件在本仓库且公开；本基线无验证阶段信号；base 挂公网面且审批默认 `ask`；transport/initialize 的就绪边界与单槽位约束。另在完整宿主工作区上核对：`packages/` 是本仓库的拷贝加上游 tag，`apps/` 只有 cli/desktop/web，没有额外的伯乐记忆包或完成检查实现。未执行 preset 面的运行时验证——需要在 Windows 上按第六节第 3 条补。
 
 沙盒脚本未入库（临时目录），含假模型、注入补丁与两个插件探针；需要时按上表复现。这一条是验收演练的缺口：没有脚本就不能证明可复现，建议 M1 前入库。
+
+### 2026-10-22　参考实现（开发暂停前）
+
+| 验证 | 做法 | 结果 |
+| --- | --- | --- |
+| C SDK 垂直切片（未授权参考，不属于 B 轨） | `cmake -S prototypes/native-c-sdk ...` + `ctest` | 2/2 通过，仅证明 04/07 的接口可走通；B 负责人决定采用/丢弃/重写 |
+| 插件 Stage 0（A 轨参考） | 禁用官方 `sdk-jsonrpc-server`，用绝对 `.ts` patch + `pnpm dsh` 加载自建插件 | `initialize` / `session/prompt` / `turn/end` / `shutdown` 全链路，退出码 0，stderr 有 `[bole-sdk-server] loaded` |
+| 交付补丁组合 | `--profile sdk --patch runtime/packages/sdk-app/cordis.patch.yml --dump-config` | 模型 `qwen3.8-27b`、`approval: never`、web/telemetry 关闭行生效 |
+| 插件类型检查 | `tsc -p runtime/packages/sdk-server/tsconfig.json --noEmit` | 通过 |
+
+以上只作参考实现，不作为验收依据；A 轨由 A 负责人决定，B 轨实现由 B 负责人决定，正式实现按 08 的工作包推进。

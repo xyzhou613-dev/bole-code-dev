@@ -1,7 +1,9 @@
 # 伯乐智能体 SDK：项目实施方案
 
 用途：定义项目的形态、仓库结构、接口契约、分工与里程碑。所有实现决定以本文与《[决策记录](00-decisions.md)》为准。
-基线：harness `0.1.7-alpha.2`，仓库 `bole-code-dev`，分支 `docs/bole-sdk`，Windows x64 交付（目标机 Windows 10 / 11）。2026-10-22 修订：RSI 改为 agent preset 切换（2.2），运行组合改为 preset 面 + 关外网面，事件模型补三层与 thinking 通道。
+基线：harness `0.1.7-alpha.2`，交付仓库分支 `docs/bole-sdk`，Windows x64 交付（目标机 Windows 10 / 11）。2026-10-22 修订：RSI 改为 agent preset 切换（2.2），运行组合改为 preset 面 + 关外网面，事件模型补三层与 thinking 通道。
+
+2026-10-22 第三轮：按项目负责人要求**先文档后开发**；分工、工作包、依赖与接口约束见 [08-work-split.md](08-work-split.md)，测试见 [05-testing.md](05-testing.md)，离线包见 [07-offline-package.md](07-offline-package.md)。A 轨插件 Stage 0 是 A 负责人的参考实现；B 轨 C SDK 实现未开始，`native/` 只保留冻结头文件；`prototypes/native-c-sdk/` 是未授权参考、不属于交付物。
 
 ## 一、一句话
 
@@ -15,7 +17,7 @@
 | 离线部署包 | 运行时、preset 面、经验包、配置、工具、示例、安装脚本 | 验收第 1 条：无外网、无开发环境的目标机跑通 |
 | 示例程序 | 控制台示例、界面示例（五项：输入 / 提交 / 实时状态区 / 结果区 / 取消） | 验收第 1、2 条：全流程 1 分钟内、界面可交互且取消生效 |
 | 文档 | 接口说明（含线程模型）、集成指南、离线部署、错误码 | 验收第 4 条 |
-| 事件流 | 会话 / 任务 / 步骤三层、thinking 增量、RSI 状态与投递收据 | 验收第 3、5 条：RSI 可观测、事件与真实阶段一致 |
+| 事件流 | 会话 / 任务 / 步骤三层、thinking 增量、最终正文、RSI 状态与投递收据 | 验收第 3、5 条：RSI 可观测、事件与真实阶段一致 |
 
 ## 三、系统架构
 
@@ -41,7 +43,7 @@ bole_agent.dll ─── 匿名管道 · 逐行 JSON-RPC ──► 运行时进�
 | 壳 | `@deepseek-ai/dsh`：启动器，只有 bin + loader + profile 启动 | npm，版本 0.1.7-alpha.2 |
 | 本体 | 数百个 `@deepseek-ai/dsh-*` 包，含内核与全部能力 | npm 同一版本，原样使用；扩展以自建插件与补丁层叠加 |
 
-`bole-code-dev` 存的是本体的源码，不是「跑在别人基座上的插件」。因此交付时用 npm 的壳与包，官方包一个不改，只把自建的插件包、补丁层、preset 声明与经验包加进去，不需要构建整仓。
+交付仓库存的是本体的源码，不是「跑在别人基座上的插件」。因此交付时用 npm 的壳与包，官方包一个不改，只把自建的插件包、补丁层、preset 声明与经验包加进去，不需要构建整仓。
 
 六条设计约束：
 
@@ -59,22 +61,23 @@ RSI 的产品实现是「第五种模式」：`rsi-infer` = `standard` + `@deeps
 ## 四、仓库结构
 
 ```
-bole-code-dev/           临时承载交付项目，C 侧与文档交付前迁出
+<repo>/                  临时承载交付项目，C 侧与文档交付前迁出
 ├── <既有包组：acp/ api/ core/ llm/ mcp/ sdk/ skill/ ...>   harness 源码，交付时原样使用
-├── sdk/
-│   └── bole-server/  新增：JSON-RPC 插件，复用官方 server 类并加 create / resume / cancel / trace / rsi / delta
-├── bundle/
-│   └── bole-sdk-app/ 新增：profile 补丁层（替换官方服务器、组合 preset 面、关外网面、固定审批策略）
-├── native/           新增：C SDK，不属于 pnpm workspace
+├── native/           新增：C SDK（B 轨实现；当前只有 include/bole_agent.h + README）
 │   ├── include/bole_agent.h
-│   ├── src/
-│   ├── tests/
+│   ├── src/           B 轨实现
+│   ├── tests/         B 轨测试
 │   └── CMakeLists.txt
 ├── examples/
 │   ├── console-c/    控制台示例
-│   ├── gui-electron/ 界面示例
+│   ├── gui-win32/   界面示例（Win32；Electron 为备选）
 │   └── toy-mcp/      验收用玩具 MCP server
-├── runtime/          运行时组装：插件包安装、preset 声明、profile 组合与配置预置
+├── runtime/          新增：运行时组装（交付侧）
+│   ├── packages/
+│   │   ├── sdk-server/  JSON-RPC 插件，复用官方 transport / server 类并扩展
+│   │   └── sdk-app/     profile 补丁层（preset 面、关外网面、审批策略）
+│   ├── preset/          standard / rsi-infer 声明
+│   └── config/          模型、MCP server 模板与 profile 配置
 ├── packaging/        离线包组装与干净机自检
 └── docs/
     ├── bole-sdk/     内部：决策、方案、协议、事件、ABI、测试
@@ -83,7 +86,7 @@ bole-code-dev/           临时承载交付项目，C 侧与文档交付前迁�
 
 依赖方向单向：`examples → native`、`packaging → runtime → 自建插件包`。`native` 不依赖任何 TypeScript 源码，只依赖协议。
 
-新增的两个 TypeScript 包放在 `sdk/` 与 `bundle/` 组下，需要在交付前同步这两个组的 README 包表与命名说明；若最终决定不把它们并进包仓库（与 `native/` 一样放在交付侧目录），则不受包组约定约束，`01-plan.md` 的目录图按实际调整。
+新增的两个 TypeScript 包放在 `runtime/packages/`（交付侧），不并进 `sdk/` 与 `bundle/` 包组：交付后随离线包走，不在产品仓库留下 `@bole` 包，也避免双语 README、包表与真实组合测试的额外门禁。
 
 ## 五、三个自研件
 
@@ -94,7 +97,7 @@ bole-code-dev/           临时承载交付项目，C 侧与文档交付前迁�
 | 进程管理 | 启动运行时、传递 `DSH_HOME`、Job Object 绑定（父进程退出即回收）、崩溃检测 |
 | 传输 | 匿名管道读写、逐行分帧、UTF-8、超长行保护、stdout 误写检测 |
 | 协议 | JSON-RPC 编解码、请求超时、请求与响应对应、请求序号 |
-| 事件 | 通知解析、阶段映射、增量合并、有界队列 |
+| 事件 | 通知解析、事件排队、回调（阶段映射与投影在插件） |
 | 会话 | 句柄表、引用计数、异步释放、preset 选择 |
 | 错误 | 错误码映射、句柄级最近错误串 |
 | 日志 | 可选文件日志，用于现场排障 |
@@ -118,7 +121,7 @@ bole-code-dev/           临时承载交付项目，C 侧与文档交付前迁�
 
 | 包 | 类型 | 职责 |
 | --- | --- | --- |
-| `@bole/sdk-server` | Cordis 插件 | 创建 `JsonRpcLineTransport` 与 `HarnessSdkJsonRpcServer`（均为官方公开导出），保留官方 `inject: [sdkAppStartup, loader]` 与 `initialize` 的 `loader.await()` 就绪边界；在官方方法之上分发新增方法；订阅会话事件与流帧，发送 `assistant.delta`、`rsi.state`；转发 preset 选择，不 import 经验插件 |
+| `@bole/sdk-server` | Cordis 插件 | 创建 `JsonRpcLineTransport` 与 `HarnessSdkJsonRpcServer`（均为官方公开导出），保留官方 `inject: [sdkAppStartup, loader]` 与 `initialize` 的 `loader.await()` 就绪边界；在官方方法之上分发新增方法；订阅会话事件与流帧，把结构事件投影成 `bole.event`，并发送 `assistant.delta`、`rsi.state`；转发 preset 选择，不 import 经验插件 |
 | `@bole/sdk-app` | profile bundle | `cordis.patch.yml`：`disabled` 官方 `sdk-jsonrpc-server`、`insert` 自己的插件；禁用 base 的 agent 面行并插入 `agent-preset-registry` 与 `standard` / `rsi-infer` 声明；关闭外网面；固定审批策略；可附带 provider 预置配置 |
 
 preset 声明的正文直接对齐 `bundle/web-app/presets/standard.patch.yml` 与 `rsi-infer.patch.yml`（后者只多一行经验插件），只取这两份。若产品侧同意，也可以让离线包直接复用 `@deepseek-ai/dsh-web-app` 包内的这两份 patch（该包 `files` 已包含它们），少维护一份；代价是多一个与 Web 强绑定的依赖，需要评估。这是实现选型，不改变契约。
@@ -163,6 +166,7 @@ preset 声明的正文直接对齐 `bundle/web-app/presets/standard.patch.yml` �
 | `RSI_STATE` | 会话头 / `agent-preset/selected` / 经验收据 | preset、来源、投递状态与 `deliveredMemoryIds` |
 | `TEXT_DELTA` | 瞬时帧 `text-delta` | 可合并、可丢弃旧值；最终以 `assistant/message` 为准 |
 | `REASONING_DELTA` | 瞬时帧 `reasoning-delta` | 思考增量，合并策略同正文 |
+| `ASSISTANT_MESSAGE` | `assistant/message` | 最终正文/思考与 usage，权威替换增量 |
 | `TOOL_CALL_STARTED` | `tool/call` | 调用 id、工具名、原始参数 JSON |
 | `TOOL_CALL_FINISHED` | `tool/result` | 调用 id、成功与否、错误码与结果摘要 |
 | `VERIFY_CHECK` | **暂缓**：本基线没有可投影来源 | 保留定义，本运行时不产生、不承诺送达 |
@@ -197,7 +201,7 @@ preset 声明的正文直接对齐 `bundle/web-app/presets/standard.patch.yml` �
 - **preset 面**（RSI 的载体）：禁用 base 的 agent 面行（`tool-bash`、`tool-pwsh`、`tool-fs`、`tool-fs-search`、`tool-jobs`、`skill-filesystem`、`tool-skill`、`command-goal`、`tool-goal`、`plan-mode`、`compaction-basic`、`command-compact`、`tool-result-pruner`、`tool-subagent*`、`workflow-ptc`、`tool-workflow`、`tool-ralph`、`agent-instructions`、`tool-todo`、`tool-web`、`tool-plugin-manager`），插入 `agent-preset-registry`（`default: standard`）与 `standard` / `rsi-infer` 两条 `agent-preset` 声明。**本期只随包这两条**（10-22 确认），`ptc` / `minimal` / `cordis` 不随包。禁止重复注册：这些行不能同时留在 base。部分行在 base 里本来就是 disabled，仍显式列出，避免上游重排后意外复活。
 - **外网面**：关闭 `tool-web`、`web-search-deepseek`、`web-fetch-http`、`web` 与 `session-telemetry-otel`（或用 `DSH_TELEMETRY_DISABLED` 兜底）。任务书要求运行期无外网访问，这一条不能只写文档。
 - **审批与沙箱**：`approval.policy: never`（headless 没有应答者，`ask` 会 fail-closed），沙箱模式按现场选 `workspace-write` 或 `danger-full-access`。审批只在 `tools/pre-execute` 返回 `ask` 时发生，SDK 组合不挂载会产生 `ask` 的组件（`hooks-claude-code`、`auto-review`），因此工具调用不会停住。
-- **模型配置**：沿用 base 的 `bole` 路由（`Bole Model`、`http://192.168.19.203:9001/v1`、`openai-completions`、占位 key），但模型 ID 覆盖为 `qwen3.8-27b`（10-22 确认；base 的 `bole-model` 只是占位）。经验允许列表有两个模型：`qwen3.8-27b`（Qwen 服务经验 v3）与 `Ornith-1.5-35B-A3B`（Ornith V18），各自加载自己的包、按准确 ID 隔离；改出这两个 ID 会让 RSI 退化为 `unsupported-model`。
+- **模型配置**：沿用 base 的 `bole` 路由（`Bole Model`、`http://<model-gateway>/v1`、`openai-completions`、占位 key；地址由部署配置提供），但模型 ID 覆盖为 `qwen3.8-27b`（10-22 确认；base 的 `bole-model` 只是占位）。经验允许列表有两个模型：`qwen3.8-27b`（Qwen 服务经验 v3）与 `Ornith-1.5-35B-A3B`（Ornith V18），各自加载自己的包、按准确 ID 隔离；改出这两个 ID 会让 RSI 退化为 `unsupported-model`。
 - **MCP 工具两份来源**：随包玩具 server（验收用）；调用方在配置文件声明的 MCP server（stdio 或 streamable-http，每条一个 `@deepseek-ai/dsh-mcp-client` 条目，可配 `toolCallTimeoutMs`、`failOnStartupError`）。v1 只支持配置文件声明、重启生效，运行时注册接口放二期（已确认，10-22）。
 - 一个运行时进程可承载多个会话，SDK 句柄与运行时进程一一对应。
 - 启动参数 `--profile sdk --patch <离线包内补丁路径>`，`DSH_HOME` 指向离线包内独立目录，不读用户家目录。
@@ -224,6 +228,8 @@ bole-agent-sdk-<版本>-win-x64/
 
 ## 九、测试与验收
 
+详细分层、fixtures、命令与检查表见 [05-testing.md](05-testing.md)。摘要：
+
 | 层级 | 内容 |
 | --- | --- |
 | 单元 | 分帧、编解码、事件映射、错误码、合并与队列 |
@@ -240,7 +246,7 @@ bole-agent-sdk-<版本>-win-x64/
 
 | 阶段 | 时长 | 完成标志 |
 | --- | --- | --- |
-| M0 契约与打样 | 第 1 周 | 三份契约冻结；控制台跑通一次工具调用并掐表；preset 面最小可运行 |
+| M0 契约与打样 | 第 1 周 | 三份契约冻结（10-22 已完成）与文档签收；控制台跑通一次工具调用并掐表；preset 面最小可运行 |
 | M1 功能完整 | 第 2-3 周 | SDK 全接口、协议扩展全功能、取消与 RSI 可观测、step 与 thinking 事件 |
 | M2 示例与打包 | 第 4-5 周 | 两个示例、四份文档、离线包可解压运行 |
 | M3 演练 | 第 6 周 | 干净机断网跑通四条验收 |
@@ -248,11 +254,13 @@ bole-agent-sdk-<版本>-win-x64/
 
 ## 十一、分工
 
-| 角色 | 负责 |
-| --- | --- |
-| A 协议与运行期 | `sdk/bole-server`、`bundle/bole-sdk-app`、preset 面、运行时组装、玩具 MCP server |
-| B 接口与交付面 | `native/` 的 C 动态库、两个示例、四份交付文档、离线包装配 |
-| 共同 | 三份契约、验收演练脚本、现场联调 |
+详细工作包（A1–A8、B1–B8、C1–C2）、依赖、DoD、粗估工作量与领取表见 [08-work-split.md](08-work-split.md)。摘要：
+
+| 角色 | 负责 | 拥有目录 |
+| --- | --- | --- |
+| A 协议与运行期 | 插件、补丁层、preset 面、运行时组装、玩具 MCP | `runtime/packages/sdk-server`、`runtime/packages/sdk-app`、`runtime/config`、`runtime/preset`、`examples/toy-mcp` |
+| B 接口与交付面 | C 动态库、两个示例、离线包、四份交付文档 | `native/`、`examples/console-c`、`examples/gui-win32`、`packaging/`、`docs/delivery/` |
+| 共同 | 三份契约、fixtures、验收演练、现场联调 | `docs/bole-sdk/02-04`、`native/tests/fixtures`、`docs/bole-sdk/05` |
 
 ## 十二、风险与前置条件
 
@@ -269,11 +277,13 @@ bole-agent-sdk-<版本>-win-x64/
 | 离线机外网请求 | base 挂 web 工具与 telemetry | 补丁层显式关闭，M3 前用断网机 + 进程网络审计验证 |
 | 目标机安全策略 | 未确认 | M3 前备好未签名说明与哈希清单 |
 
-## 十三、开工前的准备
+## 十三、当前准备状态（2026-10-22 第三轮）
 
-1. 三份契约：协议方法表、事件模型、C 头文件。
-2. 运行时沙盒：`0.1.7-alpha.2` 已跑通（《决策记录》第八节）；把它连同 preset 面一起固化成可复用的验收沙盒，并入库。
-3. preset 面最小可运行：`standard` / `rsi-infer` 两条声明 + 经验包，先在没有模型的情况下验证会话创建、preset 锁定与收据事件。
-4. 玩具 MCP server：不依赖私有包，可直接完成。
-5. 环境：Windows 装 Build Tools 与 pnpm；WSL 装 mingw-w64 供日常迭代。
-6. 目录骨架：`sdk/bole-server/`、`bundle/bole-sdk-app/`、`native/`、`examples/`、`runtime/`、`packaging/`、`docs/delivery/`。
+1. **契约**：02/03/04 已冻结 1.0，头文件 `native/include/bole_agent.h` 可用；开发暂停，等 A/B 领取。
+2. **文档**：05 测试、06 开发环境、07 离线包、08 分工与接口、`docs/delivery/README.md` 已完成，待项目负责人签收。
+3. **参考实现**：A 轨插件 Stage 0（真实 sdk profile 全链路）是 A 负责人的参考；B 轨 C SDK 未开始，本会话不代写。`prototypes/native-c-sdk/` 是未授权参考，B 可决定采用/丢弃/重写。
+4. **fixtures**：C1 先捕获真实 wire 报文入库；C 与插件共用。
+5. **preset 面**：A4；Windows 环境按 10-22 口径暂缓。
+6. **玩具 MCP**：A7，不依赖私有包。
+7. **目录骨架**：`native/`、`runtime/packages/`、`examples/`、`packaging/`、`docs/delivery/` 已建；内容待工作包填充。
+8. **Windows**：Build Tools、pnpm、机器数量待确认；WSL 交叉编译可选。
