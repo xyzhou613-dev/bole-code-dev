@@ -22,6 +22,7 @@
 | [06-dev-environment.md](06-dev-environment.md) | 已完成（2026-10-22） | 路径约定、C/插件构建、mock 模型、环境坑位 | 否 |
 | [07-offline-package.md](07-offline-package.md) | 已完成（2026-10-22） | 离线包目录、C 启动约束、依赖清单、自检 | 否 |
 | [08-work-split.md](08-work-split.md) | 已完成（2026-10-22） | 分工、工作包、依赖、接口约束、领取表 | 否（分工入口） |
+| [09-a-track-plan.md](09-a-track-plan.md) | 已起草（2026-10-22） | A 轨执行计划：起点差距、技术决定、阶段/周排期、测试证据、风险 | 否（A 内部执行） |
 | [docs/delivery/README.md](../delivery/README.md) | 索引已完成，四份正文待写 | 对外四份：接口说明、集成指南、离线部署、错误码 | 否，B 轨 M2 前 |
 
 ## 2026-10-22 修订摘要
