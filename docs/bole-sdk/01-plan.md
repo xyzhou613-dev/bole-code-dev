@@ -197,11 +197,11 @@ preset 声明的正文直接对齐 `bundle/web-app/presets/standard.patch.yml` �
 ## 七、运行时组合与配置
 
 - 壳与全部官方包从 npm 安装，版本锁 `0.1.7-alpha.2`，一个不改。
-- 自建插件 `@bole/sdk-server` 与补丁层 `@bole/sdk-app` 随离线包安装：profile 的 `cordis.patch.yml` 或 `--patch` 引入补丁，插件按包名解析。两包的依赖写死 `0.1.7-alpha.2`，不用 `workspace:*`，否则装不进 npm 运行时树。
+- 自建插件 `@bole/sdk-server` 与补丁层 `@bole/sdk-app` 随离线包安装：profile 的 `cordis.patch.yml` 或 `--patch` 引入补丁，插件按包名解析。两包的依赖写死 `0.1.7-alpha.2`，不用 `workspace:*`，否则装不进 npm 运行时树。**实施修正（10-22，F9）**：Loader 对预设/插入行的裸包名按 profile 解析，`@bole/sdk-server` 与经验包必须装进 `<DSH_HOME>/profiles/sdk/node_modules`；只放 `runtime/node_modules` 会 `failed to import`。
 - **preset 面**（RSI 的载体）：禁用 base 的 agent 面行（`tool-bash`、`tool-pwsh`、`tool-fs`、`tool-fs-search`、`tool-jobs`、`skill-filesystem`、`tool-skill`、`command-goal`、`tool-goal`、`plan-mode`、`compaction-basic`、`command-compact`、`tool-result-pruner`、`tool-subagent*`、`workflow-ptc`、`tool-workflow`、`tool-ralph`、`agent-instructions`、`tool-todo`、`tool-web`、`tool-plugin-manager`），插入 `agent-preset-registry`（`default: standard`）与 `standard` / `rsi-infer` 两条 `agent-preset` 声明。**本期只随包这两条**（10-22 确认），`ptc` / `minimal` / `cordis` 不随包。禁止重复注册：这些行不能同时留在 base。部分行在 base 里本来就是 disabled，仍显式列出，避免上游重排后意外复活。
 - **外网面**：关闭 `tool-web`、`web-search-deepseek`、`web-fetch-http`、`web` 与 `session-telemetry-otel`（或用 `DSH_TELEMETRY_DISABLED` 兜底）。任务书要求运行期无外网访问，这一条不能只写文档。
 - **审批与沙箱**：`approval.policy: never`（headless 没有应答者，`ask` 会 fail-closed），沙箱模式按现场选 `workspace-write` 或 `danger-full-access`。审批只在 `tools/pre-execute` 返回 `ask` 时发生，SDK 组合不挂载会产生 `ask` 的组件（`hooks-claude-code`、`auto-review`），因此工具调用不会停住。
-- **模型配置**：沿用 base 的 `bole` 路由（`Bole Model`、`http://<model-gateway>/v1`、`openai-completions`、占位 key；地址由部署配置提供），但模型 ID 覆盖为 `qwen3.8-27b`（10-22 确认；base 的 `bole-model` 只是占位）。经验允许列表有两个模型：`qwen3.8-27b`（Qwen 服务经验 v3）与 `Ornith-1.5-35B-A3B`（Ornith V18），各自加载自己的包、按准确 ID 隔离；改出这两个 ID 会让 RSI 退化为 `unsupported-model`。
+- **模型配置**：沿用 base 的 `bole` 路由（`Bole Model`、`http://<model-gateway>/v1`、`openai-completions`、占位 key；地址由部署配置提供），但模型 ID 覆盖为 `qwen3.8-27b`（10-22 确认；base 的 `bole-model` 只是占位）。经验允许列表有两个模型：`qwen3.8-27b`（Qwen 服务经验 v3）与 `Ornith-1.5-35B-A3B`（Ornith V18），各自加载自己的包、按准确 ID 隔离；改出这两个 ID 会让 RSI 退化为 `unsupported-model`。**实施修正（10-22，F8）**：发布包只解析 `apiKeyEnv`，交付补丁用 `apiKeyEnv: BOLE_API_KEY` + `<DSH_HOME>/.env`，不依赖内联 `apiKey`。
 - **MCP 工具两份来源**：随包玩具 server（验收用）；调用方在配置文件声明的 MCP server（stdio 或 streamable-http，每条一个 `@deepseek-ai/dsh-mcp-client` 条目，可配 `toolCallTimeoutMs`、`failOnStartupError`）。v1 只支持配置文件声明、重启生效，运行时注册接口放二期（已确认，10-22）。
 - 一个运行时进程可承载多个会话，SDK 句柄与运行时进程一一对应。
 - 启动参数 `--profile sdk --patch <离线包内补丁路径>`，`DSH_HOME` 指向离线包内独立目录，不读用户家目录。

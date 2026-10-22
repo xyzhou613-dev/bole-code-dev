@@ -33,6 +33,9 @@ bole-agent-sdk-<版本>-win-x64/
 │   ├── config/                          # 模型、MCP server 模板、profile 配置
 │   └── assets/                          # 经验包 assets（final-experiences.json 等）
 ├── home/                                # DSH_HOME：可写；会话/存储/日志
+│   ├── profiles/sdk/node_modules/       # 自定义插件安装位（见下方实施修正）
+│   │   ├── @bole/sdk-server/
+│   │   └── @deepseek-ai/dsh-skill-bole-experience/
 │   ├── sessions/
 │   ├── storages/
 │   └── logs/
@@ -52,6 +55,8 @@ bole-agent-sdk-<版本>-win-x64/
 ```
 
 `home/` 与 `runtime/` 分离：运行时树只读（安装后不被改写），会话、日志、缓存都落 `home/`。如果现场需要多用户/多实例，复制整个包目录或给每个实例独立 `home/`。
+
+> 实施修正（2026-10-22，F9）：Loader 对补丁/预设里的裸包名按 profile 解析。`@bole/sdk-server` 与经验包必须装进 `home/profiles/sdk/node_modules`（可预置整个 profile），只放 `runtime/node_modules` 会报 `failed to import`。`runtime/node_modules` 仍放官方依赖树与 node.exe。见 [09-a-track-plan.md](09-a-track-plan.md) F9 与 `runtime/config/README.md`。
 
 ## 三、C 库启动约束
 

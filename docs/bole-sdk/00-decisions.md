@@ -117,6 +117,8 @@ SDK 离线包**只挂 `standard` 与 `rsi-infer` 两条**（10-22 确认）；`p
         models: [{ id: bole-model }]
 ```
 
+> 实施修正（2026-10-22，F8）：`0.1.7-alpha.2` 的发布包 `dsh-llm-pi-ai` 只解析 `apiKeyEnv`，忽略内联 `apiKey`。交付补丁改用 `apiKeyEnv: BOLE_API_KEY`，由 `<DSH_HOME>/.env` 提供 `BOLE_API_KEY=local`；不改 C 的启动环境变量列表。见 [09-a-track-plan.md](09-a-track-plan.md) F8。
+
 「模型 ID」与「是否需要 API Key」在基线上已有答案：base 预置 `bole-model` 与占位 key。2026-10-22 确认：**目标网关实际提供的模型 ID 是 `qwen3.8-27b`**，命中经验允许列表（`qwen3.8-27b` / `Qwen3.8-27B`、`Ornith-1.5-35B-A3B` / `ornith-1.5-35b-a3b`）。因此：
 
 1. 离线包要把 base 覆盖行的 `models[].id` 与 `agent-default-model.model` 改成 `qwen3.8-27b`；`bole-model` 只是基线占位。

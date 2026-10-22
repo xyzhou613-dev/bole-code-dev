@@ -146,6 +146,7 @@ C 库启动 `<runtime_dir>/node.exe`，参数固定：
 ```
 
 - 环境：`DSH_HOME=<dsh_home>`、`DSH_PERMISSION_MODE=workspace-write|danger-full-access`、`DSH_TELEMETRY_DISABLED=1`。
+- 实施修正（10-22，F9）：`@bole/sdk-server` 与经验包装进 `<dsh_home>/profiles/sdk/node_modules`，不只放 `runtime/node_modules`；Loader 对裸包名按 profile 解析。
 - 工作目录：`bole_config.cwd`（默认调用方进程 cwd）。
 - `bole_init` 校验 `node.exe`、入口、`cordis.patch.yml` 存在；缺失返回 `1001`。
 - 离线包目录与 `VERSION.json` 见 07；A 负责插件/patch，B 负责包与启动配置。
