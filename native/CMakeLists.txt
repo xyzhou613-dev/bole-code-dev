@@ -20,6 +20,9 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+  # Sources are UTF-8; the default Chinese Windows code page (936) rejects
+  # UTF-8 comments/strings with C4819/C2001.
+  add_compile_options(/utf-8)
 endif()
 
 set(BOLE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
