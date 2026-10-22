@@ -56,6 +56,60 @@
       "timeoutMs": 60000
     },
     {
+      "file": "rsi-available.jsonl",
+      "description": "RSI-infer session with a rsi-available experience receipt",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        15,
+        10,
+        11,
+        14,
+        22,
+        12,
+        50
+      ],
+      "terminal": "completed",
+      "timeoutMs": 60000
+    },
+    {
+      "file": "rsi-delivered.jsonl",
+      "description": "RSI-infer session with a rsi-delivered experience receipt",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        15,
+        10,
+        11,
+        14,
+        22,
+        12,
+        50
+      ],
+      "terminal": "completed",
+      "timeoutMs": 60000
+    },
+    {
+      "file": "rsi-unsupported.jsonl",
+      "description": "RSI-infer session with a rsi-unsupported experience receipt",
+      "capturedAt": "2026-10-22",
+      "runtime": "0.1.7-alpha.2",
+      "model": "mock openai-completions (bole)",
+      "expectedEventTypes": [
+        15,
+        10,
+        11,
+        14,
+        22,
+        12,
+        50
+      ],
+      "terminal": "completed",
+      "timeoutMs": 60000
+    },
+    {
       "file": "text-turn.jsonl",
       "description": "Plain text turn: task/step/model/assistant/finish",
       "capturedAt": "2026-10-22",

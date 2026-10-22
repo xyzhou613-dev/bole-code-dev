@@ -258,6 +258,7 @@ export class BoleSdkServer {
     if (typeof params.rsiEnabled === 'boolean' && this.ctx.get('agentPresets') !== undefined) {
       this.defaultPreset = params.rsiEnabled ? 'rsi-infer' : 'standard'
     }
+    setImmediate(() => { this.emitDefaultRsi('config') })
     return { serverInfo: { name: 'deepseek-harness-sdk-runtime', version: '0.0.1' } }
   }
 
@@ -400,6 +401,53 @@ export class BoleSdkServer {
   }
 
   /**
+   * Set the default preset for new sessions, or select it for one blank session.
+   * @param params - enabled flag and optional session id.
+   * @returns the committed scope.
+   */
+  async rsiSet(params: Record<string, unknown>): Promise<{ enabled: boolean; preset: string; scope: string }> {
+    this.assertInitialized()
+    if (typeof params.enabled !== 'boolean') throw invalid('enabled must be a boolean')
+    const presets = this.ctx.get('agentPresets')
+    if (presets === undefined) throw business('RSI_UNAVAILABLE', 'the runtime has no preset plane')
+    const preset = params.enabled ? 'rsi-infer' : 'standard'
+    const sessionId = optionalString(params.sessionId, 'sessionId')
+    if (sessionId !== undefined) {
+      await this.setPreset({ sessionId, preset })
+      return { enabled: params.enabled, preset, scope: 'session' }
+    }
+    try {
+      await presets.resolve(preset)
+    } catch (error) {
+      throw presetError(error)
+    }
+    this.defaultPreset = preset
+    this.emitDefaultRsi('interface')
+    return { enabled: params.enabled, preset, scope: 'default' }
+  }
+
+  /**
+   * Read the default or one session's preset state.
+   * @param params - optional session id.
+   * @returns enabled/preset/composed.
+   */
+  async rsiGet(params: Record<string, unknown>): Promise<{ enabled: boolean; preset: string; composed: boolean }> {
+    this.assertInitialized()
+    const presets = this.ctx.get('agentPresets')
+    const composed = presets !== undefined
+    if (!composed) return { enabled: false, preset: '', composed: false }
+    const sessionId = optionalString(params.sessionId, 'sessionId')
+    if (sessionId !== undefined) {
+      const record = this.sessions.get(sessionId)
+      if (record === undefined) throw business('SESSION_NOT_FOUND', `session "${sessionId}" not found`)
+      const preset = record.preset ?? presets.defaultId
+      return { enabled: preset === 'rsi-infer', preset, composed: true }
+    }
+    const preset = this.defaultPreset ?? presets.defaultId
+    return { enabled: preset === 'rsi-infer', preset, composed: true }
+  }
+
+  /**
    * Dispose server-owned sessions, subscriptions, and the fallback adapter.
    * @returns an empty result.
    */
@@ -428,6 +476,10 @@ export class BoleSdkServer {
         return this.cancel(params ?? {})
       case 'session/setPreset':
         return this.setPreset(params ?? {})
+      case 'rsi.set':
+        return this.rsiSet(params ?? {})
+      case 'rsi.get':
+        return this.rsiGet(params ?? {})
       case 'shutdown':
         return this.shutdown()
       default:
@@ -543,6 +595,24 @@ export class BoleSdkServer {
     this.transport.notify('bole.event', {
       sessionId,
       event: { event_id: this.nextEventId++, session_id: sessionId, ...projected },
+    })
+  }
+
+  private emitDefaultRsi(source: 'config' | 'interface'): void {
+    const composed = this.ctx.get('agentPresets') !== undefined
+    const state: ProjectionState = {
+      turn: 0,
+      step: 0,
+      preset: composed ? this.defaultPreset ?? this.ctx.get('agentPresets')?.defaultId : undefined,
+      tools: new Map(),
+    }
+    this.emit('', {
+      type: 15,
+      task: 0,
+      step: 0,
+      seq: 0,
+      ts_ms: Date.now(),
+      payload: rsiPayload(state, { sessionId: '', composed }, source, 'default'),
     })
   }
 

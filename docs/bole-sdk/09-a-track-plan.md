@@ -55,6 +55,8 @@
 | F6 | `--patch` 可重复，且 `$DSH_HOME/cordis.patch.yml` 是高于 profile 的独立层；C 的启动参数只承诺一个 `--patch` | CLI 参考（profile → home → argv 层叠） | 站点配置（模型地址、MCP）放 home 层，交付 patch 保持单一文件，见 D6 |
 | F7 | 轨迹可读的权威入口：活会话用 `Session.events`，冷会话用 `ctx.sessionQuery.readSession(id)` | `core/session`、`session-query/session-query/src/index.ts` | A5 不依赖 Web 的 `session-log-export` |
 | F8 | 发布包 `@deepseek-ai/dsh-llm-pi-ai@0.1.7-alpha.2` 只解析 `apiKeyEnv`，忽略配置里的内联 `apiKey`；仓库源码两者都支持 | 安装树 `lib/index.js` 的 `resolveApiKey`；P0 实测返回 `No API key for provider: bole` | 交付 patch 改用 `apiKeyEnv: BOLE_API_KEY`，由 `<DSH_HOME>/.env` 提供占位 key；不能依赖内联 `apiKey` |
+| F9 | Loader 对插入行/预设行的裸包名按 profile 解析；只把 `@bole/sdk-server` 或经验包放 `runtime/node_modules` 会 `failed to import` | P0 实测 `@bole/sdk-server` 与 `@deepseek-ai/dsh-skill-bole-experience` 均失败；复制到 `$DSH_HOME/profiles/sdk/node_modules` 后成功 | B6 必须把自定义包装进 SDK profile 的 `node_modules`，或 patch 用相对/绝对入口；见 `runtime/config/README.md` |
+| F10 | SDK 的 preset 面缺少 Web 的 `subagent-model-selection-settings` 宿主行时，`standard`/`rsi-infer` mount 报 `tool-subagent ... modelSelectionSettings requires ...` | A4 实测 | `sdk-app` 补丁必须插入该宿主行 |
 
 ### 2.4 开发环境现状与选择
 
@@ -244,10 +246,10 @@ DoD：tarball 在干净树安装后 `initialize` 成功；版本输入齐；fixt
 | A1 传输与骨架 | 完成 | 严格 transport 单测 5 个；真实 profile `initialize`/`shutdown`；stdout 全为 JSON-RPC |
 | A2 会话方法 | 完成 | create/duplicate/prompt/cancel/setPreset/resume 冒烟全绿；无 preset 面时 `PRESET_NOT_FOUND`/`RSI_UNAVAILABLE` |
 | A3 事件投影 | 核心完成 | 13 类可投影事件 + 增量合并；真实覆盖 10/11/12/14/15/22/30/31/50/51；4 个 fixtures |
-| A4 RSI/preset 面 | 未开始 | 等 A4 补丁行、经验包与收据三态 |
+| A4 RSI/preset 面 | 核心完成 | 两个 preset 创建、空白切换、`PRESET_LOCKED`、`rsi.set/get`、默认状态；收据 `delivered`/`available`/`unsupported-model` 实测 |
 | A5 轨迹 | 未开始 | — |
 
-fixtures：`happy-tool`、`text-turn`、`cancel-mid-turn`、`model-error`。`rsi-*`、`max-tokens`、`long-tool-output` 等 A4/A5 后再补。
+fixtures：`happy-tool`、`text-turn`、`cancel-mid-turn`、`model-error`、`rsi-delivered`、`rsi-available`、`rsi-unsupported`。`max-tokens`、`long-tool-output`、`tool-error` 等 A5 后再补。
 
 ## 五、周排期与门
 

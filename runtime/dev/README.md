@@ -24,6 +24,9 @@ npm --prefix runtime/dev install
 # 3. 构建插件并链接进运行时（可重复）
 npm --prefix runtime/dev run build
 node -e "import('./runtime/dev/shared/runtime.mjs').then(m => m.ensureDevLinks())"
+
+# 4. 构建经验插件并装进开发运行时（RSI-infer 需要）
+node runtime/dev/build-experience.mjs
 ```
 
 `ensureDevLinks()` 建立三个软链（都在 `.gitignore` 内）：
@@ -52,10 +55,27 @@ MOCK_TOOL=add MOCK_TOOL_ARGS='{"a":1,"b":2}' node runtime/dev/mock-model.mjs
 
 `capture.mjs` 会自动起 mock，并写一个只覆盖 `llm-pi-ai` 的临时 patch（`runtime/dev/.dev/mock.patch.yml`），再叠加到交付 patch 之后。
 
+## 会话与 RSI
+
+```sh
+# create / duplicate / prompt / cancel / setPreset / rsi.set/get / resume
+node runtime/dev/session.mjs
+
+# 一次 RSI-infer 运行，分别产出 delivered / available / unsupported-model
+node runtime/dev/capture.mjs --scenario rsi-delivered --preset rsi-infer --text "启动一个服务并保持运行"
+node runtime/dev/capture.mjs --scenario rsi-available --preset rsi-infer --text "hello"
+node runtime/dev/capture.mjs --scenario rsi-unsupported --preset rsi-infer --model test-model --text "hello"
+```
+
+`prepareHome()` 会初始化 `sdk` profile，并把经验包装进 `<home>/profiles/sdk/node_modules`。这是必要的：Loader 对预设行的裸包名按 profile 解析，只放运行时树的包会 `failed to import`（F9）。
+
 ## 捕获
 
 ```sh
 node runtime/dev/capture.mjs --scenario happy-tool --text "用一句话介绍你自己"
+
+# 原始 stdout -> fixture JSONL + manifest
+node runtime/dev/fixtures.mjs --from .dev/tool-ok.jsonl --scenario happy-tool --terminal completed
 ```
 
 输出 `runtime/.dev/<scenario>.jsonl`，一行一个原始 stdout 帧。fixture 清洗、占位替换与 manifest 在 A3 补齐；正式 fixture 放 `native/tests/fixtures/`。

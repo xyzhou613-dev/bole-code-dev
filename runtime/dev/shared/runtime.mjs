@@ -5,9 +5,9 @@
  * from this file so the same scripts work from any checkout location.
  */
 
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
@@ -88,6 +88,31 @@ async function linkDir(target, linkPath) {
  */
 export async function makeHome(prefix = 'bole-smoke-') {
   return mkdtemp(join(tmpdir(), prefix))
+}
+
+/**
+ * Create a temporary home with an initialized `sdk` profile and the Bole
+ * experience package installed where preset rows resolve bare names.
+ * @param prefix - temporary directory prefix.
+ * @returns the prepared temporary home.
+ */
+export async function prepareHome(prefix = 'bole-session-') {
+  const home = await makeHome(prefix)
+  const init = spawnSync(process.execPath, [cliBin, '--profile', 'sdk', '--dump-config'], {
+    cwd: repoRoot,
+    env: { ...process.env, DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1' },
+    encoding: 'utf8',
+  })
+  if (init.status !== 0) throw new Error(`failed to initialize the sdk profile: ${init.stderr}`)
+  const source = join(runtimeDir, 'node_modules/@deepseek-ai/dsh-skill-bole-experience')
+  const destination = join(home, 'profiles/sdk/node_modules/@deepseek-ai/dsh-skill-bole-experience')
+  await mkdir(dirname(destination), { recursive: true })
+  try {
+    await cp(source, destination, { recursive: true })
+  } catch {
+    throw new Error('experience package is missing from the dev runtime; run node runtime/dev/build-experience.mjs')
+  }
+  return home
 }
 
 /**

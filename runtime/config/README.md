@@ -29,6 +29,16 @@ BOLE_API_KEY=local
 - `home.patch.yml.template`：`llm-pi-ai.providers.bole.baseURL`、额外 `@deepseek-ai/dsh-mcp-client` 行；
 - `mcp.servers.example.yml`：stdio / streamable-http 两种写法。
 
+## 自定义包的位置
+
+Loader 对补丁/预设里插入的裸包名按 **profile** 解析。只把 `@bole/sdk-server` 或 `@deepseek-ai/dsh-skill-bole-experience` 放 `runtime/node_modules`，运行时会报：
+
+```text
+failed to import
+```
+
+离线包安装脚本必须把这两个包装进 `<DSH_HOME>/profiles/sdk/node_modules/`（profile 首次启动后生成；也可以预置整个 profile 目录），或者把补丁里的插件入口改成相对/绝对路径。见 09-a-track-plan.md F9。
+
 ## 注意
 
 - 不要把真实的网关地址、密钥、机器名写进仓库；模板里用占位值。

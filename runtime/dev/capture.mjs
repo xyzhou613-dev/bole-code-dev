@@ -11,13 +11,19 @@
 
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { assert, cleanup, devPatchFile, devRoot, ensureDevLinks, makeHome, repoRoot, RpcClient, spawnRuntime } from './shared/runtime.mjs'
+import { assert, cleanup, devPatchFile, devRoot, ensureDevLinks, prepareHome, repoRoot, RpcClient, spawnRuntime } from './shared/runtime.mjs'
 import { startMockModel } from './mock-model.mjs'
 
 const args = process.argv.slice(2)
 const scenarioFlag = args.indexOf('--scenario')
 const scenario = scenarioFlag === -1 ? 'capture' : args[scenarioFlag + 1] ?? 'capture'
 const cancel = args.includes('--cancel')
+const valueOf = (name, fallback) => {
+  const index = args.indexOf(name)
+  return index === -1 ? fallback : args[index + 1]
+}
+const preset = valueOf('--preset')
+const model = valueOf('--model', 'qwen3.8-27b')
 const textFlag = args.indexOf('--text')
 const prompt = textFlag === -1 ? '用一句话介绍你自己' : args[textFlag + 1] ?? 'hello'
 
@@ -35,16 +41,20 @@ await writeFile(mockPatch, `- id: llm-pi-ai
         apiKeyEnv: BOLE_API_KEY
         models:
           - id: qwen3.8-27b
+          - id: test-model
 `)
 
-const home = await makeHome('bole-capture-')
+const home = await prepareHome('bole-capture-')
 await writeFile(join(home, '.env'), 'BOLE_API_KEY=local\n')
 let client
 try {
   await ensureDevLinks()
   const child = spawnRuntime({ home, patches: [devPatchFile, mockPatch] })
   client = new RpcClient(child)
-  await client.request('initialize', { cwd: repoRoot, provider: 'bole', model: 'qwen3.8-27b' })
+  await client.request('initialize', { cwd: repoRoot, provider: 'bole', model })
+  if (preset !== undefined) {
+    await client.request('session/create', { sessionId: 's-001', preset })
+  }
   await client.request('session/prompt', {
     sessionId: 's-001',
     contentBlocks: [{ type: 'text', text: prompt }],

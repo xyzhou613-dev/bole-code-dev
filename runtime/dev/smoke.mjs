@@ -25,7 +25,7 @@ try {
   assert(first.jsonrpc === '2.0', `first stdout frame is not JSON-RPC: ${JSON.stringify(first)}`)
   assert(init?.serverInfo?.name !== undefined, 'initialize result has no serverInfo')
   assert(init.sdkProtocolVersion === 1, `initialize result has no sdkProtocolVersion 1: ${JSON.stringify(init)}`)
-  assert(init.capabilities?.preset === false, `base profile must not compose presets yet: ${JSON.stringify(init.capabilities)}`)
+  assert(init.capabilities?.preset === true, `preset plane is not composed: ${JSON.stringify(init.capabilities)}`)
   assert(init.capabilities?.persistence === true, `base profile must expose persistence: ${JSON.stringify(init.capabilities)}`)
   assert(['workspace-write', 'danger-full-access', 'unavailable'].includes(init.capabilities?.sandbox), `unexpected sandbox capability: ${JSON.stringify(init.capabilities)}`)
   const elapsed = Date.now() - started
