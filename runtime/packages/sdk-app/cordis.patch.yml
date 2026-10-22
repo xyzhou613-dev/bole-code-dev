@@ -28,7 +28,10 @@
         displayName: Bole Model
         api: openai-completions
         baseURL: http://192.168.19.203:9001/v1
-        apiKey: local
+        # The gateway accepts any key. The published 0.1.7 runtime resolves
+        # apiKeyEnv (an inline `apiKey` is ignored there), so the package's
+        # home/.env supplies BOLE_API_KEY=local.
+        apiKeyEnv: BOLE_API_KEY
         models:
           - id: qwen3.8-27b
 

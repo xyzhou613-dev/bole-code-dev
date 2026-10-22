@@ -54,6 +54,7 @@
 | F5 | 插件 `peerDependencies` 把 `@deepseek-ai/cordis` 写成 `0.1.7-alpha.2`（实际为 `~4.0.4`）；`files` 只列 `lib/index.js` | `runtime/packages/sdk-server/package.json` | A8 修正，否则装进运行时树解析失败/漏发多文件 |
 | F6 | `--patch` 可重复，且 `$DSH_HOME/cordis.patch.yml` 是高于 profile 的独立层；C 的启动参数只承诺一个 `--patch` | CLI 参考（profile → home → argv 层叠） | 站点配置（模型地址、MCP）放 home 层，交付 patch 保持单一文件，见 D6 |
 | F7 | 轨迹可读的权威入口：活会话用 `Session.events`，冷会话用 `ctx.sessionQuery.readSession(id)` | `core/session`、`session-query/session-query/src/index.ts` | A5 不依赖 Web 的 `session-log-export` |
+| F8 | 发布包 `@deepseek-ai/dsh-llm-pi-ai@0.1.7-alpha.2` 只解析 `apiKeyEnv`，忽略配置里的内联 `apiKey`；仓库源码两者都支持 | 安装树 `lib/index.js` 的 `resolveApiKey`；P0 实测返回 `No API key for provider: bole` | 交付 patch 改用 `apiKeyEnv: BOLE_API_KEY`，由 `<DSH_HOME>/.env` 提供占位 key；不能依赖内联 `apiKey` |
 
 ### 2.4 开发环境现状与选择
 
@@ -113,7 +114,7 @@ runtime/config/                      站点配置模板（home patch、MCP 示�
 | D3 | **默认 preset 由插件持有**（`rsi.enabled` / `initialize.rsiEnabled` → `standard` 或 `rsi-infer`），不改 registry 的 volatile 默认值 | `rsi.set` 只影响后续新会话，插件是最小 owner；避免与 settings/UI 默认值互相覆盖 | 「写 registry `selectedDefault`」：跨进程状态、与 Web 语义耦合 |
 | D4 | **结构事件与 RSI 走 `bole.event`；增量走 `assistant.delta`**（02 允许二选一，C 两种都收） | 结构事件获得统一信封、`seq` 与 fixtures；高频增量走紧凑专用通知，避免事件 id 抖动 | 「全部走 bole.event」：也可行，但增量体积/编号噪声更大；交付前需 B 确认选用形态并据此写 fixture |
 | D5 | **轨迹：活会话读 `Session.events`，冷会话读 `sessionQuery.readSession`**；按 `turn/start..turn/end` 切片 | 活会话含未落盘的最新前缀，符合「调用时已存在」；冷会话有查询服务 | 「只读 JSONL」：活会话会漏最新事件；「只读内存」：resume 前的会话不可用 |
-| D6 | **交付 patch 单文件**（禁用行 + 插件行 + preset 行 + 外网/审批/模型行）；**站点配置放 `$DSH_HOME/cordis.patch.yml`**（模型地址、额外 MCP 行） | C 的启动参数固定一个 `--patch`；home 层天然高于 profile、可写、可重启生效，满足「配置文件声明 MCP」 | 「拆多个 `--patch`」：要改 04/07 的启动契约；「全部塞交付 patch」：现场改只读运行时树 |
+| D6 | **交付 patch 单文件**（禁用行 + 插件行 + preset 行 + 外网/审批/模型行）；**站点配置放 `$DSH_HOME/cordis.patch.yml`**（模型地址、额外 MCP 行），密钥占位放 `$DSH_HOME/.env` | C 的启动参数固定一个 `--patch`；home 层天然高于 profile、可写、可重启生效，满足「配置文件声明 MCP」；`.env` 解决 F8 的 `apiKeyEnv` 解析 | 「拆多个 `--patch`」：要改 04/07 的启动契约；「全部塞交付 patch」：现场改只读运行时树 |
 | D7 | **经验包以 A 构建的 tarball 交付**：最小 tsconfig/esbuild 构建 `lib/index.js` + `assets`，必要时把 `zod` 打进产物或随树安装；只消费、不修改 `skill/skill-bole-experience` 源码 | 该包未发布 npm、展平仓库无根 tsconfig；离线包必须能解析 `@deepseek-ai/dsh-skill-bole-experience` | 「B 的打包脚本现场构建」：跨轨依赖、B 无 TS 构建环境；「改用 Web 包内的 preset 文件」：仍缺经验插件本体 |
 
 D4、D6、D7 涉及 B 的消费方式，落地前在 PR/群里确认；D6 若 B 坚持多 `--patch`，先改 04/07 再改代码。
@@ -218,7 +219,7 @@ DoD：两个 preset 各建会话；RSI 三态可观测；trace 文件可按 turn
 ### P4 运行时组装（1.5d）
 
 1. 补丁收尾：外网面全关、`session-title-llm` 关、审批、模型行、preset 行合并为单文件；补一个「base 行与 preset 行不得重复」的静态检查脚本。
-2. `runtime/config/`：`home.patch.yml.template`（模型地址、额外 MCP 行、可选 rsi 默认）、`mcp.servers.example.yml`、profile 说明。
+2. `runtime/config/`：`home.patch.yml.template`（模型地址、额外 MCP 行、可选 rsi 默认）、`home.env.template`（`BOLE_API_KEY=local`，见 F8）、`mcp.servers.example.yml`、profile 说明。
 3. `examples/toy-mcp/`：零依赖 stdio MCP（`add`/`echo`/`now`），启动 <500ms，可被杀；`README` 写工具 schema。
 4. `runtime/dev/e2e.mjs`：真实运行时 + mock 模型 + 玩具 MCP，跑「输入 → 模型 → 一次工具调用 → 结果」并计时。
 5. 启动自检：`capabilities.sandbox` 真实；后端不可用按 08 兜底；`RUNTIME_READY` 字段齐。

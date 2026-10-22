@@ -13,11 +13,11 @@
     }
   },
   "files": [
-    "lib/index.js",
+    "lib/**/*.js",
     "lib/types/**/*.d.ts"
   ],
   "peerDependencies": {
-    "@deepseek-ai/cordis": "0.1.7-alpha.2",
+    "@deepseek-ai/cordis": "~4.0.4",
     "@deepseek-ai/dsh-agent": "0.1.7-alpha.2",
     "@deepseek-ai/dsh-sdk-jsonrpc-server": "0.1.7-alpha.2",
     "@deepseek-ai/dsh-sdk-protocol": "0.1.7-alpha.2"
