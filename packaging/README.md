@@ -32,8 +32,9 @@ bole-agent-sdk-win-x64/
 `home/profiles/sdk/node_modules`（F9）。`install.ps1 -ModelGateway ...` 可在现场再次改写
 `runtime/cordis.patch.yml`；`verify.ps1` 会检查 profile 包与 `--dump-config` 组合。
 
-验证状态（2026-10-22）：在 Windows 主机上用 MinGW 构建的 DLL（临时替代 `.lib`）跑了
-`build-offline.ps1` → `install.ps1` → `verify.ps1`，verify 通过；从安装目录运行
-`console-c` 完成 `mcp__toy__add(1,2) -> 3`，约 1.9s。正式交付仍需用 MSVC `/MT` 产出
-`bole_agent.lib` 后在 Windows 构建机复跑同一流程。
+验证状态（2026-10-22）：Windows + MSVC BuildTools 2022（`/MT`）构建
+`bole_agent.dll/.lib`，`build-offline.ps1` → `install.ps1` → `verify.ps1` 全过；
+从安装目录运行 MSVC `console-c` 完成 `mcp__toy__add(1,2) -> 3` 与
+`TASK_FINISHED`。MSVC `ctest` 的 json/error/fixtures 3/3 通过；GUI 已用 MSVC 构建，
+未启动（需要交互桌面）。
 

@@ -59,13 +59,15 @@ function Expand-Package([string]$Tarball, [string]$Destination) {
 }
 
 # --- 1. C SDK binaries and header ------------------------------------------
-foreach ($name in @("bole_agent.dll", "bole_agent.lib", "bole_agent.h")) {
+foreach ($name in @("bole_agent.dll", "bole_agent.lib")) {
   $source = Join-Path $NativeBuild $name
   if (!(Test-Path $source)) {
     throw "missing $source; the delivery build must use MSVC and emit bole_agent.lib"
   }
   Copy-Item $source (Join-Path $root "bin") -Force
 }
+# The header is source-controlled and is not a CMake output.
+Copy-Item (Join-Path $repo "native\include\bole_agent.h") (Join-Path $root "bin\bole_agent.h") -Force
 if (Test-Path (Join-Path $NativeBuild "bole_agent.pdb")) {
   Copy-Item (Join-Path $NativeBuild "bole_agent.pdb") (Join-Path $root "bin") -Force
 }

@@ -58,6 +58,7 @@
 | F9 | Loader 对插入行/预设行的裸包名按 profile 解析；只把 `@bole/sdk-server` 或经验包放 `runtime/node_modules` 会 `failed to import` | P0 实测 `@bole/sdk-server` 与 `@deepseek-ai/dsh-skill-bole-experience` 均失败；复制到 `$DSH_HOME/profiles/sdk/node_modules` 后成功 | B6 必须把自定义包装进 SDK profile 的 `node_modules`，或 patch 用相对/绝对入口；见 `runtime/config/README.md` |
 | F10 | SDK 的 preset 面缺少 Web 的 `subagent-model-selection-settings` 宿主行时，`standard`/`rsi-infer` mount 报 `tool-subagent ... modelSelectionSettings requires ...` | A4 实测 | `sdk-app` 补丁必须插入该宿主行 |
 | F11 | C 启动的 `--patch` 是最高层，高于 home patch；把模型 `baseURL` 放 home 会被交付 patch 覆盖 | Windows 离线包 C2 实测：mock 0 调用 | 模型配置留在 `runtime/cordis.patch.yml`，由 build/install 的 `-ModelGateway` 改写；home patch 只放 MCP |
+| F12 | MSVC 默认中文代码页 936 无法编译 UTF-8 源，`test_json.c` 报 C4819/C2001 | MSVC BuildTools 2022 实测 | CMake 对 MSVC 加 `/utf-8` |
 
 ### 2.4 开发环境现状与选择
 
@@ -251,7 +252,7 @@ DoD：tarball 在干净树安装后 `initialize` 成功；版本输入齐；fixt
 | A5 轨迹 | 完成 | 活会话/冷会话导出、turn 过滤、`TRACE_WRITE_FAILED`、重启后冷导出且不重放；10KB 工具输出 trace 全文 vs 投影 8KB 截断 |
 | A6 补丁层 | 完成 | `check-config` 15 项全过；`capabilities.sandbox` 实测为 danger-full-access |
 | A7 运行时组装/玩具 MCP | 完成 | toy MCP 启动 70ms；E2E 1.6s；杀 MCP 后工具错误且运行时继续；home/MCP 模板 |
-| A8 打包输入/B6 脚本 | 完成（待 MSVC 正式件复跑） | tarball；B6 build/install/verify 在 Windows 实测；离线包 console C2 通过；正式 MSVC `.lib` 待 B3 |
+| A8 打包输入/B6 脚本 | 完成 | MSVC `/MT` 构建；build/install/verify 全过；离线包 MSVC console C2 通过；GUI 构建未启动 |
 
 fixtures：`happy-tool`、`text-turn`、`cancel-mid-turn`、`model-error`、`tool-error`、`max-tokens`、`long-tool-output`、`plan-updated`、`reasoning`、`rsi-delivered`、`rsi-available`、`rsi-unsupported`。
 
