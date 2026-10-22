@@ -17,6 +17,9 @@ bole-agent-sdk-<版本>-win-x64/
 │   ├── config/                 # 模型、MCP 配置模板
 │   └── assets/                 # 经验包等随包资产
 ├── home/                       # 可写运行目录（会话、日志、缓存）
+│   ├── .env                    # 模型占位 key（BOLE_API_KEY）
+│   ├── cordis.patch.yml        # 站点 MCP 配置（install 生成）
+│   └── profiles/sdk/node_modules/  # 自建插件与经验包（install 预置）
 ├── tools/
 │   └── toy-mcp/                # 验收用玩具 MCP（stdio，无副作用）
 ├── samples/
@@ -29,14 +32,15 @@ bole-agent-sdk-<版本>-win-x64/
 │   └── 04-error-codes.md
 ├── VERSION.json                # 组件版本清单
 ├── SHA256SUMS                  # 文件校验清单
-├── install.ps1                 # 校验与目录准备
-└── selfcheck.ps1               # 启动/握手/会话/工具/取消/轨迹自检
+├── install.ps1                 # 校验、安装与 home 生成
+└── verify.ps1                  # 安装后自检（文件/版本/profile/组合）
 ```
 
 **目录职责**
 
 - `runtime/`：只读，安装后不要改；升级时整体替换。
-- `home/`：可写，保存会话、日志、缓存；升级时保留。
+- `home/`：可写，保存会话、日志、缓存；升级时保留。`profiles/sdk/node_modules` 放自建插件与经验包，不能只放 `runtime/node_modules`。
+- 模型网关地址在 `runtime/cordis.patch.yml`（C 的 `--patch` 是最高层）；安装时用 `install.ps1 -ModelGateway http://<gateway>:<port>` 改写。
 - `bin/`：SDK 动态库和头文件，供伙伴程序链接/加载。
 - `samples/`、`tools/`、`docs/`：示例、验收工具和文档。
 
@@ -49,17 +53,18 @@ bole-agent-sdk-<版本>-win-x64/
 
    ```powershell
    cd D:\bole-agent-sdk
-   .\install.ps1
+   .\install.ps1 -ModelGateway http://<gateway>:<port>
    ```
 
 3. `install.ps1` 会：
    - 校验 `SHA256SUMS` 中的所有文件；
-   - 检查 `bin/`、`runtime/node.exe`、运行时入口、`runtime/cordis.patch.yml`；
-   - 创建/确认 `home/` 可写，不覆盖已有 `home/sessions`；
-   - 输出安装路径、版本和下一步命令；
-   - 失败时以非零退出码和可读文案结束。
+   - 把包内容复制到目标目录，保留已有 `home/sessions`；
+   - 预置 `home/profiles/sdk/node_modules` 里的自建插件与经验包；
+   - 生成 `home/cordis.patch.yml`（MCP 站点层），并按 `-ModelGateway` 改写 `runtime/cordis.patch.yml`（C 的 `--patch` 是最高层）；
+   - 输出安装路径和下一步命令；失败时以非零退出码结束。
+4. 运行 `verify.ps1 -Root <安装目录>`：检查文件、版本、profile 包，并做一次 `--dump-config` 组合校验。
 
-4. 不写注册表、不写系统 `PATH`、不需要管理员权限。
+5. 不写注册表、不写系统 `PATH`、不需要管理员权限。
 
 ### 2.2 卸载
 
@@ -101,13 +106,17 @@ Get-FileHash .\bin\bole_agent.dll -Algorithm SHA256
 
 ## 4. 自检
 
-运行：
+当前运行：
 
 ```powershell
-.\selfcheck.ps1
+.\verify.ps1 -Root D:\apps\BoleAgentSdk
 ```
 
-或控制台示例的 `--selfcheck`。自检按顺序验证：
+`verify.ps1` 检查文件、版本、profile 自定义包，并做一次 `--dump-config` 组合校验。
+启动/握手/工具/取消/轨迹的完整自检脚本属于 B8，尚未随包；在那之前用
+`samples/console-c/bole_console.exe` + 玩具 MCP 手工执行下表第 2–10 项。
+
+下表是 B8 自检脚本的目标检查表：
 
 | # | 检查 | 通过标准 |
 | --- | --- | --- |
@@ -156,7 +165,7 @@ Get-FileHash .\bin\bole_agent.dll -Algorithm SHA256
 2. 备份旧包目录和 `home/`（`home/` 可选，但建议保留）；
 3. 解压新包到新目录；
 4. 把旧 `home/` 复制/迁移到新包；
-5. 运行 `install.ps1` 和 `selfcheck.ps1`；
+5. 运行 `install.ps1` 和 `verify.ps1`；
 6. 确认通过后切换应用加载路径。
 
 不要在原目录上覆盖解压；保留旧目录便于回滚。
@@ -191,7 +200,7 @@ Get-FileHash .\bin\bole_agent.dll -Algorithm SHA256
 - [ ] `VERSION.json` 与实际文件一致
 - [ ] `install.ps1` 成功，未写注册表、未要求管理员
 - [ ] `home/` 可写，未覆盖已有会话
-- [ ] `selfcheck.ps1` 第 1–10 项全部通过
+- [ ] `verify.ps1` 第 1–10 项全部通过
 - [ ] 无公网请求，telemetry 无外发
 - [ ] `standard` 无经验收据，`rsi-infer` 收据符合预期
 - [ ] 取消后终态 `aborted`，无残留子进程

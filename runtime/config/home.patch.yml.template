@@ -1,19 +1,8 @@
-# Copy to <DSH_HOME>/cordis.patch.yml. This is the writable site layer; it
-# outranks the profile and the delivery patch. Restart the runtime after edits.
-#
-# Replace <model-gateway> with the deployment gateway. The private gateway
-# accepts any key; <DSH_HOME>/.env supplies BOLE_API_KEY=local.
-- id: llm-pi-ai
-  config:
-    providers:
-      bole:
-        displayName: Bole Model
-        api: openai-completions
-        baseURL: <model-gateway>/v1
-        apiKeyEnv: BOLE_API_KEY
-        models:
-          - id: qwen3.8-27b
-          - id: Ornith-1.5-35B-A3B
+# Copy to <DSH_HOME>/cordis.patch.yml. This is the writable site layer for
+# MCP servers; the model gateway lives in runtime/cordis.patch.yml because the
+# C launcher passes that file as the highest-priority --patch layer. Set it
+# with install.ps1 -ModelGateway (or edit runtime/cordis.patch.yml).
+# Restart the runtime after edits.
 
 # One row per MCP server. SDK v1 reads this file at startup; restart after edits.
 - insert:

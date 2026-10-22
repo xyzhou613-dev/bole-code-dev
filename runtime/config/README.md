@@ -24,12 +24,13 @@ BOLE_API_KEY=local
 
 ## 模型地址与 MCP
 
-模型网关地址与调用方声明的 MCP server 放在 `<DSH_HOME>/cordis.patch.yml`（home patch 层，高于 profile）：
+C 启动参数 `--patch <runtime>/cordis.patch.yml` 是**最高层**，高于 home patch。因此：
 
-- `home.patch.yml.template`：`llm-pi-ai.providers.bole.baseURL`、`@deepseek-ai/dsh-mcp-client` 玩具行；
-- `mcp.servers.example.yml`：stdio / streamable-http 两种写法。
+- 模型网关地址放在 `runtime/cordis.patch.yml`，由 `build-offline.ps1 -ModelGateway` 或 `install.ps1 -ModelGateway` 改写；
+- `<DSH_HOME>/cordis.patch.yml` 只放调用方声明的 MCP server（`home.patch.yml.template` + `mcp.servers.example.yml`）；
+- 模板里的 `<runtime-dir>`、`<package-root>` 由 `install.ps1` 按安装目录替换。
 
-模板里的 `<model-gateway>`、`<runtime-dir>`、`<package-root>` 由安装脚本按现场替换。
+如果把 `llm-pi-ai` 的 `baseURL` 写在 home patch，它会被 `--patch` 的交付 patch 覆盖。
 
 ## 自定义包的位置
 

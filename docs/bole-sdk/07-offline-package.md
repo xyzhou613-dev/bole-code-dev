@@ -157,7 +157,7 @@ C 库按以下约定启动，B 轨实现、A 轨保证运行时布局：
 
 1. 构建 C：`cmake --build build/native --config Release`，产出 `bole_agent.dll/.lib/.h`；确认 `/MT`、无 VS 运行库依赖。
 2. 构建插件：`tsc -p runtime/packages/sdk-server/tsconfig.json`，产出 `lib/index.js` + 类型；或 `npm pack` 后安装到运行时树。
-3. 组装运行时：`npm install @deepseek-ai/dsh@0.1.7-alpha.2`（打包机联网），把 `@bole/sdk-server`、经验包、preset 声明、`cordis.patch.yml` 放入 `runtime/`。
+3. 组装运行时：`npm install @deepseek-ai/dsh@0.1.7-alpha.2`（打包机联网），把 `@bole/sdk-server` 与经验包装进 `home/profiles/sdk/node_modules`（F9），`cordis.patch.yml` 放 `runtime/`；模型地址由 `build-offline.ps1 -ModelGateway` 写入 `runtime/cordis.patch.yml`（F11）。
 4. 复制 `samples/`、`tools/toy-mcp/`、`docs/`；生成 `VERSION.json`。
 5. 用 `install.ps1` + `selfcheck.ps1` 在干净 VM 跑一遍；记录日志与耗时。
 6. 生成 `SHA256SUMS`、未签名说明；打包 zip；在另一台干净 VM 解压复跑。
