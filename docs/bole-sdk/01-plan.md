@@ -3,7 +3,7 @@
 用途：定义项目的形态、仓库结构、接口契约、分工与里程碑。所有实现决定以本文与《[决策记录](00-decisions.md)》为准。
 基线：harness `0.1.7-alpha.2`，交付仓库分支 `docs/bole-sdk`，Windows x64 交付（目标机 Windows 10 / 11）。2026-10-22 修订：RSI 改为 agent preset 切换（2.2），运行组合改为 preset 面 + 关外网面，事件模型补三层与 thinking 通道。
 
-2026-10-22 第三轮：按项目负责人要求**先文档后开发**；分工、工作包、依赖与接口约束见 [08-work-split.md](08-work-split.md)，测试见 [05-testing.md](05-testing.md)，离线包见 [07-offline-package.md](07-offline-package.md)。A 轨插件 Stage 0 是 A 负责人的参考实现；B 轨 C SDK 实现未开始，`native/` 只保留冻结头文件；`prototypes/native-c-sdk/` 是未授权参考、不属于交付物。
+2026-10-22 第三轮：按项目负责人要求**先文档后开发**；分工、工作包、依赖与接口约束见 [08-work-split.md](08-work-split.md)，测试见 [05-testing.md](05-testing.md)，离线包见 [07-offline-package.md](07-offline-package.md)。A 轨插件 Stage 0 是 A 负责人的参考实现；B 轨 C SDK 当时未开始，`native/` 只保留冻结头文件；`prototypes/native-c-sdk/` 是未授权参考、不属于交付物。**实施状态（2026-10-23）：A/B 均已完成并合入 develop；当前验收与打包见 [10-task-coverage.md](10-task-coverage.md) 与 [11-packaging-runbook.md](11-packaging-runbook.md)。**
 
 ## 一、一句话
 

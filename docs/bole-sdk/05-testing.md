@@ -72,24 +72,28 @@
 
 ### 场景清单（v1）
 
+当前 12 个：
+
 | 文件 | 覆盖 |
 | --- | --- |
 | `happy-tool.jsonl` | 一次工具调用：turn/step/header/deltas/assistant/tool/result/finish |
-| `cancel-mid-tool.jsonl` | 工具执行中取消，终态 aborted |
+| `text-turn.jsonl` | 纯文本轮次，无工具 |
+| `cancel-mid-turn.jsonl` | 工具执行中取消，终态 aborted |
 | `model-error.jsonl` | `turn/end.reason.error` → `TASK_FAILED` |
 | `tool-error.jsonl` | `tool/result.isError`，turn 仍 completed |
+| `max-tokens.jsonl` | outcome=max_tokens |
+| `long-tool-output.jsonl` | resultSummary 8KB 截断 + trace 全文 |
+| `plan-updated.jsonl` | `PLAN_UPDATED`(13) |
+| `reasoning.jsonl` | `assistant.delta` reasoning 通道 |
 | `rsi-delivered.jsonl` | rsi-infer + 服务生命周期任务 + 收据 delivered |
 | `rsi-available.jsonl` | rsi-infer + 普通任务 + available |
 | `rsi-unsupported.jsonl` | 非允许模型 + unsupported-model |
-| `no-preset-plane.jsonl` | `composed=false`，rsi.set 返回 3004 |
-| `max-tokens.jsonl` | outcome=max_tokens |
-| `long-tool-output.jsonl` | resultSummary 8KB 截断 + trace 全文 |
 
 ### 捕获
 
 - 在 `0.1.7-alpha.2` 沙盒或真实内网机上跑一次完整会话，抓 stdout 的 wire 通知；过滤掉 `session.event`（C 不用）。
-- 捕获脚本与沙盒配置入库（`scripts/capture-fixtures`，待 B8/C1 建）；脚本必须能重复产出同形状 fixture。
-- 捕获时用 mock 模型保证确定性；真实模型用于集成抽检，不写入 fixtures。
+- 捕获脚本已入库：`runtime/dev/capture.mjs`；用 mock 模型保证确定性，真实模型用于集成抽检，不写入 fixtures。
+- 清洗/写 fixture：`runtime/dev/fixtures.mjs`；回放校验：`native/tests/fixtures/validate.mjs`。
 
 ## 四、命令
 
@@ -143,7 +147,7 @@ node "$SMOKE_SCRIPT"
 
 ## 六、验收演练检查表（M3）
 
-环境：自备干净 Windows 10 / 11 x64 VM；无开发环境、无 Node、无 VS 运行库；无外网（内网模型可达，按 10-22 口径）；记录日期、机器、操作人。
+环境：干净 Windows 10 / 11 x64 VM；无开发环境、无 Node、无 VS 运行库；无外网（内网模型可达）；记录日期、机器、操作人。**干净 VM 由测试团队执行**；开发机可用 `packaging/acceptance.ps1 -SkipCleanEnvironmentCheck` 做等价演练。
 
 | # | 步骤 | 期望 | 记录 |
 | --- | --- | --- | --- |

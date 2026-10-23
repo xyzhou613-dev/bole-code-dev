@@ -86,13 +86,13 @@ bole-agent-sdk-<版本>-win-x64/
   "node": "24.x.x",
   "presets": ["standard", "rsi-infer"],
   "experience": {
-    "qwen3.8-27b": "Qwen 服务经验 v3",
-    "Ornith-1.5-35B-A3B": "Ornith V18"
+    "name": "@deepseek-ai/dsh-skill-bole-experience",
+    "version": "0.1.7-alpha.2"
   },
   "tools": {
     "toy-mcp": "0.2.0"
   },
-  "builtAt": "2026-10-22T00:00:00Z"
+  "builtAt": "2026-10-23T00:00:00Z"
 }
 ```
 
@@ -121,8 +121,8 @@ Get-FileHash .\bin\bole_agent.dll -Algorithm SHA256
   .\runtime .\home "用玩具工具计算 1+2"
 ```
 
-它覆盖下表第 2–8 项（启动、preset、工具、RSI、取消、trace）；第 9 项无外网和
-第 10 项的进程清理由现场网络策略/任务管理器复核。下表保留为 B8 验收检查表：
+它覆盖下表第 2–8 项（启动、preset、工具、RSI、取消、trace）；第 9 项无外网由现场网络策略审计，
+第 10 项进程清理由 `acceptance.ps1` 检查。下表保留为 B8 验收检查表：
 
 | # | 检查 | 通过标准 |
 | --- | --- | --- |
@@ -137,7 +137,8 @@ Get-FileHash .\bin\bole_agent.dll -Algorithm SHA256
 | 9 | 无外网 | 运行期无公网请求；telemetry 无外发 |
 | 10 | 退出 | `bole_release` 返回 `0`；运行时和工具子进程全部退出 |
 
-自检日志写到 `home/logs/selfcheck-<时间>.log`，包含版本、命令、耗时和错误码。
+`bole_selfcheck.exe` 的 PASS/FAIL 输出写 stdout；它还会把 trace 写到
+`home/selfcheck-trace.jsonl`。运行日志在 `home/logs/`，由运行时/工具写入。
 
 ## 5. 网络与安全
 

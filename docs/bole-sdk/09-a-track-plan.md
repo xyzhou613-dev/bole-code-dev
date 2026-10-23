@@ -198,7 +198,7 @@ DoD：真实运行时下 initialize/create/prompt/cancel/resume/setPreset/shutdo
 1. `events/projection.ts` + `payloads.ts`：15 类事件的纯函数、截断、终态映射、tool call 关联、plan/todo、header。
 2. `events/deltas.ts`：合并器与 attempt 表；50ms/4KB/revision 单测（fake timers）。
 3. 会话过滤：只发 SDK 会话；子代理不透传。
-4. fixtures：先捕 `happy-tool`、`tool-error`、`model-error`、`cancel-mid-tool`；manifest 记场景/期望终态/超时。
+4. fixtures：先捕 `happy-tool`、`tool-error`、`model-error`、`cancel-mid-turn`；最终 12 个场景以 manifest 为准。
 5. L1 回放：同一 fixture 喂投影器，逐条比对 wire 形态。
 
 DoD：15 类事件都有断言；增量可丢、终态不丢；fixtures 来自真实运行；`ASSISTANT_MESSAGE` 权威替换。

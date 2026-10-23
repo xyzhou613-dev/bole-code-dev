@@ -1,12 +1,12 @@
 # packaging/ — 离线包（B6）
 
-目标机无外网、无 Node、无 VS 运行库；解压即用、不写注册表、不需要管理员权限。
+目标机无外网、无 Node、无 VS 运行库；解压即用、不写注册表、不需要管理员权限。构建机前置与完整命令见 [11-packaging-runbook](../docs/bole-sdk/11-packaging-runbook.md)。
 
 | 脚本 | 作用 |
 |---|---|
 | `build-offline.ps1` | 在 Windows 构建机上装配 `bole-agent-sdk-win-x64/`，生成 `VERSION.json` 与 `SHA256SUMS`，打 zip |
 | `install.ps1` | 校验哈希后复制到 `%LOCALAPPDATA%\BoleAgentSdk` |
-| `verify.ps1` | 安装后自检：文件齐、dsh 版本锁定 |
+| `verify.ps1` | 安装后自检：文件、版本、profile 包、`--dump-config` 组合 |
 | `acceptance.ps1` | 干净 VM 一条命令：安装、真实网关 C2、B8 自检、GUI 启动、证据收集；开发机复测可加 `-SkipCleanEnvironmentCheck` |
 
 目录约定见 `docs/bole-sdk/07-offline-package.md`：
@@ -14,8 +14,9 @@
 ```
 bole-agent-sdk-win-x64/
 ├── bin/       bole_agent.dll/.lib/.h
-├── runtime/   node.exe + dsh 依赖树 + cordis.patch.yml + home/
-├── tools/     玩具 MCP
+├── runtime/   node.exe + dsh 依赖树 + cordis.patch.yml
+├── home/      可写会话目录 + profiles/sdk + .env + MCP patch
+├── tools/     玩具 MCP（12 个工具）
 ├── samples/   console-c（含 bole_selfcheck）、gui-win32
 ├── docs/      四份交付文档
 ├── VERSION.json
@@ -35,10 +36,9 @@ bole-agent-sdk-win-x64/
 `home/profiles/sdk/node_modules`（F9）。`install.ps1 -ModelGateway ...` 可在现场再次改写
 `runtime/cordis.patch.yml`；`verify.ps1` 会检查 profile 包与 `--dump-config` 组合。
 
-验证状态（2026-10-22）：Windows + MSVC BuildTools 2022（`/MT`）构建
-`bole_agent.dll/.lib`，`build-offline.ps1` → `install.ps1` → `verify.ps1` 全过；
-从安装目录运行 MSVC `console-c` 完成 `mcp__toy__add(1,2) -> 3` 与
-`TASK_FINISHED`，`bole_selfcheck.exe` 的 ready/preset/tool/rsi/cancel/trace 全过。
-MSVC `ctest` 的 json/error/platform/fixtures 4/4 通过；GUI 已用 MSVC 构建，
-未启动（需要交互桌面）。
+验证状态（2026-10-23）：Windows + MSVC BuildTools 2022（`/MT`）构建
+`bole_agent.dll/.lib`；`build-offline.ps1 → install.ps1 → verify.ps1 → acceptance.ps1`
+在开发机全过（真实网关，acceptance 含 console C2、B8 selfcheck、GUI 启动、进程检查）。
+MSVC `ctest` 的 json/error/platform/fixtures 4/4 通过；toy MCP 12 个工具。
+已有 r6 候选包，但它早于 toy MCP 0.2.0/acceptance 的最终改动，不能交付；最终包需重打。完整构建步骤见 [11-packaging-runbook](../docs/bole-sdk/11-packaging-runbook.md)。
 

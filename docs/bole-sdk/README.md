@@ -18,12 +18,14 @@
 | [02-protocol.md](02-protocol.md) | 已冻结 1.0（2026-10-22） | 协议方法表：入参、出参、错误、顺序保证 | 否 |
 | [03-events.md](03-events.md) | 已冻结 1.0（2026-10-22；真实 fixtures 已捕获 12 个） | 事件模型：枚举、字段、合并规则、来源映射 | 否 |
 | [04-c-abi.md](04-c-abi.md) | 已冻结 1.0（2026-10-22；B 在 B1 前确认可实现性） | C 头文件：句柄、错误码、回调、线程模型 | 否 |
-| [05-testing.md](05-testing.md) | 已完成（2026-10-22） | 测试分层、fixtures、命令、验收检查表 | 否 |
-| [06-dev-environment.md](06-dev-environment.md) | 已完成（2026-10-22） | 路径约定、C/插件构建、mock 模型、环境坑位 | 否 |
-| [07-offline-package.md](07-offline-package.md) | 已完成（2026-10-22） | 离线包目录、C 启动约束、依赖清单、自检 | 否 |
+| [05-testing.md](05-testing.md) | 已完成（2026-10-23） | 测试分层、fixtures、命令、验收检查表 | 否 |
+| [06-dev-environment.md](06-dev-environment.md) | 已完成（2026-10-23） | 路径约定、C/插件构建、mock 模型、环境坑位 | 否 |
+| [07-offline-package.md](07-offline-package.md) | 已完成（2026-10-23） | 离线包目录、C 启动约束、依赖清单、自检 | 否 |
 | [08-work-split.md](08-work-split.md) | 已完成（2026-10-22） | 分工、工作包、依赖、接口约束、领取表 | 否（分工入口） |
-| [09-a-track-plan.md](09-a-track-plan.md) | 已起草（2026-10-22） | A 轨执行计划：起点差距、技术决定、阶段/周排期、测试证据、风险 | 否（A 内部执行） |
-| [docs/delivery/README.md](../delivery/README.md) | 四份正文已起草（2026-10-22），待 B 自检、A 复核与打包验证 | 对外四份：接口说明、集成指南、离线部署、错误码 | 否，B 轨 M2 前 |
+| [09-a-track-plan.md](09-a-track-plan.md) | 已完成（2026-10-23） | A 轨执行计划：起点差距、技术决定、阶段/周排期、测试证据、风险 | 否（A 内部执行） |
+| [10-task-coverage.md](10-task-coverage.md) | 已完成（2026-10-23） | 原任务逐项覆盖、已知偏差、剩余测试与打包前动作 | 否 |
+| [11-packaging-runbook.md](11-packaging-runbook.md) | 已完成（2026-10-23） | 构建/打包/干净 VM 验收 runbook（测试团队使用） | 否 |
+| [docs/delivery/README.md](../delivery/README.md) | 四份正文已完成（2026-10-23），待最终包内核对与测试验收 | 对外四份：接口说明、集成指南、离线部署、错误码 | 否，打包前 |
 
 ## 2026-10-22 修订摘要
 
@@ -38,13 +40,14 @@
 
 RSI 产品实现的权威参考是同仓库的 [RSI-infer 交接](../../bundle/web-app/RSI-INFER-HANDOFF.zh.md) 与 [`skill-bole-experience`](../../skill/skill-bole-experience/README.md)；本目录的文档只描述 SDK 如何选择与投影，不重复实现细节。
 
-## 当前阶段：分工前文档冻结（开发暂停，2026-10-22）
+## 当前阶段：实施完成，验收交接（2026-10-23）
 
-- 02 / 03 / 04 冻结 1.0；C 头文件 `native/include/bole_agent.h`。
-- 分工入口：先读 [08-work-split.md](08-work-split.md)；A/B 领取表在第十节，G0 签收清单在第十一节；领取后填表并追加 `00-decisions.md` 确认记录。
-- 测试：读 [05-testing.md](05-testing.md)；离线包：读 [07-offline-package.md](07-offline-package.md)；开发环境：读 [06-dev-environment.md](06-dev-environment.md)。
-- A 轨 `runtime/packages/sdk-server` Stage 0 是 A 负责人的参考实现（真实 `--profile sdk` 下 initialize/prompt/turn-end/shutdown 跑通）；B 轨 C SDK 实现未开始，`native/` 只保留冻结头文件。`prototypes/native-c-sdk/` 是未授权参考，不属于交付物，B 可决定采用/丢弃/重写。
-- 不继续开发；工作包按 08 领取后再动代码。
+- A/B 两条线已合入 `develop`；C SDK、示例、离线打包脚本、验收脚本、四份交付文档均已落地。
+- 已用真实内网网关跑通 console、B8 自检、GUI；qwen `enable_thinking:false` 已抓包确认。
+- 干净目标 VM 由测试团队执行，使用 `packaging/acceptance.ps1`；开发机已完成等价演练。
+- **最终交付 zip 尚未生成**：r5 是旧包；已有 r6 候选包但早于 toy MCP 0.2.0/acceptance 改动，不能交付；当前代码需要重打最终 r6。
+- 验收口径以 [10-task-coverage.md](10-task-coverage.md) 为准；构建步骤见 [11-packaging-runbook.md](11-packaging-runbook.md)。
+- 两处既定限制：验证阶段（`VERIFY_CHECK`）暂缓；MCP v1 仅配置文件声明 + 重启，不支持运行时注册。
 
 ## 三份契约已冻结（2026-10-22 1.0）
 

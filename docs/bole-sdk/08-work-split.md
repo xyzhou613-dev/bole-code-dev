@@ -4,13 +4,17 @@
 
 本文是分工与边界的唯一入口；接口细节以 `02-protocol.md`、`03-events.md`、`04-c-abi.md` 与 `native/include/bole_agent.h` 为准，测试细节以 `05-testing.md` 为准，离线包细节以 `07-offline-package.md` 为准。
 
+## 实施状态（2026-10-23）
+
+A/B 两轨已完成并合入 `develop`：C SDK、控制台/GUI 示例、离线包脚本、acceptance 脚本与四份交付文档均落地；真实内网网关已跑通。本文保留 10-22 的分工/接口基线，当前验收与剩余测试见 [10-task-coverage.md](10-task-coverage.md)，构建步骤见 [11-packaging-runbook.md](11-packaging-runbook.md)。
+
 ## 一、目标与本轮边界
 
 **v1 目标**：Windows x64 的 C 接口 SDK（DLL + 头文件 + 导入库）、随包运行时、控制台与界面示例、离线部署包、四份中文文档；在无外网、无开发环境的目标机上跑通「输入 → 模型 → 一次 MCP 工具调用 → 结果」并可在任务中取消；RSI 开关以 `standard` / `rsi-infer` 两个 preset 承载且状态可在事件流观测。
 
 **不做**：IDE 侧绑定与插件壳（伙伴）、具体第三方工具适配（MATLAB 等）、硬件/一体机镜像、验证阶段（暂缓）、运行时 MCP 注册（二期）、32 位、Windows 10/11 以外系统。
 
-**本轮边界**：不新增开发代码，尤其**不代 B 轨写 C 实现、测试、示例或打包**。A 轨 `runtime/packages/sdk-server` Stage 0 是 A 负责人的参考实现；B 轨 C SDK 实现未开始；`prototypes/native-c-sdk/` 是未授权参考，不属于交付物，B 可决定采用/丢弃/重写。A/B 领取工作包后按本文的接口推进。
+**历史边界（10-22）**：不新增开发代码，尤其不代 B 轨写 C 实现、测试、示例或打包。该边界已在 10-23 解除：B 轨实现、示例、打包脚本与测试均已完成；`prototypes/native-c-sdk/` 是未授权参考，不属于交付物。
 
 ## 二、角色与所有权
 
@@ -155,7 +159,7 @@ C 库启动 `<runtime_dir>/node.exe`，参数固定：
 
 - 路径：`native/tests/fixtures/`；一行一个 wire 通知（`bole.event` / `assistant.delta` / `rsi.state`），JSONL。
 - `manifest.json` 描述场景、期望事件数、终态、超时；不写「理想」序列，必须来自真实运行。
-- 命名：`happy-tool.jsonl`、`cancel-mid-tool.jsonl`、`model-error.jsonl`、`rsi-delivered.jsonl`、`rsi-available.jsonl`、`rsi-unsupported.jsonl`、`tool-error.jsonl`。
+- 命名：实际 12 个 fixture 以 `native/tests/fixtures/manifest.json` 为准（happy-tool、text-turn、cancel-mid-turn、model-error、tool-error、max-tokens、long-tool-output、plan-updated、reasoning、rsi-delivered/available/unsupported）。
 - 捕获脚本与沙盒一起入库；路径、session id、时间戳可替换为稳定的占位值，但事件形状与顺序不能改。
 
 ### 7. 构建产物

@@ -1,6 +1,6 @@
 # 07 离线包布局与自检（2026-10-22）
 
-状态：分工前基线。负责人：B 轨（接口与交付面）；A 轨提供插件、补丁、preset 与经验包产物。本文是 C 库启动与打包的共同约束，不包含实现；具体实现、脚本与示例由 B 负责人决定；当前仓库不含 C 实现或离线包。05 的验收演练以本文的目录为准。
+状态：实现完成，2026-10-23 更新。负责人：B 轨（接口与交付面）；A 轨提供插件、补丁、preset 与经验包产物。本文是 C 库启动与离线包布局的共同约束；实际构建/打包命令见 `11-packaging-runbook.md`。05 的验收演练以本文的目录为准。
 
 ## 一、目标与硬性要求
 
@@ -129,7 +129,7 @@ C 库按以下约定启动，B 轨实现、A 轨保证运行时布局：
 
 ## 六、自检
 
-`selfcheck.ps1`（或控制台示例的 `--selfcheck`）按顺序验证：
+`verify.ps1` + `bole_selfcheck.exe`（`acceptance.ps1` 会串联）按顺序验证：
 
 | # | 检查 | 通过标准 |
 | --- | --- | --- |
@@ -144,7 +144,7 @@ C 库按以下约定启动，B 轨实现、A 轨保证运行时布局：
 | 9 | 无外网 | 运行期无公网请求（网络审计/代理日志）；telemetry 无外发 |
 | 10 | 退出 | `release` 返回 0；运行时进程与工具子进程全部退出 |
 
-自检日志写 `home/logs/selfcheck-<时间>.log`，包含版本、命令、耗时、错误码。
+`bole_selfcheck.exe` 的 PASS/FAIL 写 stdout；trace 写 `home/selfcheck-trace.jsonl`；运行时日志在 `home/logs/`。
 
 ## 七、签名与现场安全
 
@@ -153,15 +153,16 @@ C 库按以下约定启动，B 轨实现、A 轨保证运行时布局：
 - M3 前在目标同款安全策略的机器上试运行；若被拦截，记录拦截名称/规则，再决定是否采购签名证书。
 - 不把 `home/` 放到网络盘；ACL 沙箱对临时目录与工作区有假设（见 02/04）。
 
-## 八、打包步骤（B 轨）
+## 八、打包步骤（测试/交付）
 
-1. 构建 C：`cmake --build build/native --config Release`，产出 `bole_agent.dll/.lib/.h`；确认 `/MT`、无 VS 运行库依赖。
-2. 构建插件：`tsc -p runtime/packages/sdk-server/tsconfig.json`，产出 `lib/index.js` + 类型；或 `npm pack` 后安装到运行时树。
-3. 组装运行时：`npm install @deepseek-ai/dsh@0.1.7-alpha.2`（打包机联网），把 `@bole/sdk-server` 与经验包装进 `home/profiles/sdk/node_modules`（F9），`cordis.patch.yml` 放 `runtime/`；模型地址由 `build-offline.ps1 -ModelGateway` 写入 `runtime/cordis.patch.yml`（F11）。
-4. 复制 `samples/`、`tools/toy-mcp/`、`docs/`；生成 `VERSION.json`。
-5. 用 `install.ps1` + `selfcheck.ps1` 在干净 VM 跑一遍；记录日志与耗时。
-6. 生成 `SHA256SUMS`、未签名说明；打包 zip；在另一台干净 VM 解压复跑。
-7. 把 zip 哈希、版本、自检日志交给项目负责人。
+完整命令、前置与验收见 [11-packaging-runbook.md](11-packaging-runbook.md)。摘要：
+
+1. 用 MSVC x64 `/MT` 构建 `bole_agent.dll/.lib`；`native/include/bole_agent.h` 随包。
+2. 用 `runtime/dev/build-experience.mjs` + `runtime/dev/pack.mjs` 产 tarball。
+3. 准备 `0.1.7-alpha.2` 运行时树（含 `node.exe`）。
+4. 运行 `packaging/build-offline.ps1 -RuntimeDir ... -NativeBuild ... -ModelGateway ... -ConsoleExe ... -GuiExe ...`。
+5. 干净 VM 运行 `acceptance.ps1`（install → verify → console → selfcheck → GUI），产物与日志交测试。
+6. 生成/记录 zip SHA256、`VERSION.json`、测试人/时间。
 
 ## 九、已知限制
 

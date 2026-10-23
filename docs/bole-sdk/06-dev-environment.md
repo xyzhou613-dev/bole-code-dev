@@ -1,6 +1,6 @@
 # 06 开发环境（2026-10-22）
 
-状态：Linux/WSL 开发环境约定；Windows 构建环境暂缓（按 10-22 口径，先文档与分工）。本文只写开发侧，不替代 `07-offline-package.md` 的交付布局。
+状态：开发环境约定，2026-10-23 更新。C SDK 已实现并在 Windows/MSVC 与 Linux/MinGW 下验证；本文只写开发侧，不替代 `07-offline-package.md` 的交付布局与 `11-packaging-runbook.md` 的构建步骤。
 
 ## 一、路径约定
 
@@ -20,9 +20,9 @@
 
 ## 二、C SDK（B 轨负责）
 
-B 轨按 04/05/07 实现 `native/src`、`native/tests`、`native/CMakeLists.txt`；本会话不提供交付实现。`native/include/bole_agent.h` 是冻结接口；`native/` 当前只有该头文件与 README。`prototypes/native-c-sdk/` 是未授权参考，不属于交付物，B 可决定采用/丢弃/重写。
+`native/include/bole_agent.h` 是冻结接口。C SDK 已实现 `native/src`、`native/tests`、`native/CMakeLists.txt`；Windows 用 `platform_win32.c`，POSIX 用 `platform_posix.c`。`prototypes/native-c-sdk/` 是未授权参考，不属于交付物。
 
-目标构建方式（B 实现后）：
+Linux/POSIX 构建：
 
 ```bash
 cmake -S "$REPO/native" -B "$REPO/build/native" -DCMAKE_BUILD_TYPE=Debug
@@ -30,8 +30,8 @@ cmake --build "$REPO/build/native" -j4
 ctest --test-dir "$REPO/build/native" --output-on-failure
 ```
 
-- Linux 用 `platform_posix.c`；Windows 用 `platform_win32.c`（CreatePipe/CreateProcessW/Job Object），CMake 在 WIN32 上缺该文件时应明确报错。
-- 测试覆盖（B 实现时）：JSON 扫描/构造、初始化/就绪、建会话、提交、事件、取消错误码、RSI、轨迹导出、释放。
+- Windows 构建必须用 MSVC x64（`/MT`）并加 `/utf-8`；精确命令见 `11-packaging-runbook.md`。
+- 测试覆盖：JSON 扫描/构造、初始化/就绪、建会话、提交、事件、取消错误码、RSI、轨迹导出、释放、Win32 进程/UTF-8 路径。
 - 假运行时通过编译定义 `FAKE_RUNTIME_PATH` 注入；测试自己建 `runtime_dir`、`dsh_home`、`cordis.patch.yml` 和 `node.exe` 包装脚本。
 
 ## 三、桥接插件
