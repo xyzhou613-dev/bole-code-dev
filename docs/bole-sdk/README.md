@@ -25,6 +25,8 @@
 | [09-a-track-plan.md](09-a-track-plan.md) | 已完成（2026-10-23） | A 轨执行计划：起点差距、技术决定、阶段/周排期、测试证据、风险 | 否（A 内部执行） |
 | [10-task-coverage.md](10-task-coverage.md) | 已完成（2026-10-23） | 原任务逐项覆盖、已知偏差、剩余测试与打包前动作 | 否 |
 | [11-packaging-runbook.md](11-packaging-runbook.md) | 已完成（2026-10-23） | 构建/打包/干净 VM 验收 runbook（测试团队使用） | 否 |
+| [12-handoff-report.md](12-handoff-report.md) | 已完成（2026-10-23） | 交付验收交接报告：结论、安装、验收对照、截图、限制与测试清单 | 否 |
+| [13-customer-guide.md](13-customer-guide.md) | 已完成（2026-10-23） | 客户版快速使用说明：解压、安装、检查、运行、接入五步 | 否（客户交付） |
 | [docs/delivery/README.md](../delivery/README.md) | 四份正文已完成（2026-10-23），待最终包内核对与测试验收 | 对外四份：接口说明、集成指南、离线部署、错误码 | 否，打包前 |
 
 ## 2026-10-22 修订摘要
