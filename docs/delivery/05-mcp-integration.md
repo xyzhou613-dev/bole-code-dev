@@ -65,6 +65,8 @@ cd <SDK_HOME>\samples\console-c
 结果区：mcp__toy__add 的返回结果 3，或模型回答 1 + 2 = 3
 ```
 
+> 【贴图位置 1】把上面的控制台或 GUI 截图放在这里；用红框圈住 `mcp__toy__add`、`resultSummary:"3"`、`finished`。
+
 ### 1.3 证明 12 个工具已注册
 
 ```powershell
@@ -167,6 +169,8 @@ Echo: hello-external-mcp
 
 如果截 GUI，框住输入框里的 `mcp__everything__echo`、状态栏 `finished`、结果区的 `Echo: hello-external-mcp`。
 
+> 【贴图位置 2】把外部 MCP 截图放在这里；用红框圈住 `mcp__everything__echo`、`Echo: hello-external-mcp`、`finished`。
+
 ## 3. 如何新增一个 MCP 服务
 
 ### 第 1 步：确认服务能独立启动
@@ -231,7 +235,14 @@ mcp__everything__echo
 - 工具结果出现在模型回答里；
 - 任务最终为 `[task] finished`。
 
-## 4. 常见问题
+## 4. 已验证
+
+- 自带工具：真实网关下 `mcp__toy__add` 返回 `3`；12 个工具均已实际调用过。
+- 外部服务：`@modelcontextprotocol/server-everything@2.0.0` 的 `echo` 返回
+  `Echo: hello-external-mcp`。
+- 截图由交付方在自己的干净环境补拍；本文只标位置。
+
+## 5. 常见问题
 
 | 现象 | 处理 |
 | --- | --- |
@@ -241,7 +252,7 @@ mcp__everything__echo
 | 改了配置不生效 | 没有重启运行时；MCP 只在启动时读取 |
 | 工具名不对 | 用 `mcp__<serverName>__<toolName>`，不要用裸工具名 |
 
-## 5. 说明与限制
+## 6. 说明与限制
 
 - 本文示例使用 stdio；远程 HTTP/SSE MCP 是否可用取决于运行时 MCP 客户端实现，接入前需单独验证。
 - 外部 MCP 进程拥有当前用户权限；只接入可信服务，不要把密钥写进 `args`。
