@@ -45,7 +45,7 @@ RSI 产品实现的权威参考是同仓库的 [RSI-infer 交接](../../bundle/w
 - A/B 两条线已合入 `develop`；C SDK、示例、离线打包脚本、验收脚本、四份交付文档均已落地。
 - 已用真实内网网关跑通 console、B8 自检、GUI；qwen `enable_thinking:false` 已抓包确认。
 - 干净目标 VM 由测试团队执行，使用 `packaging/acceptance.ps1`；开发机已完成等价演练。
-- **最终交付 zip 尚未生成**：r5 是旧包；已有 r6 候选包但早于 toy MCP 0.2.0/acceptance 改动，不能交付；当前代码需要重打最终 r6。
+- **r6 final zip 已生成**：SHA256 `aaeeafd8c7e3a520743fd367ce8955b00923a500a453b7d6b604dc1f30dbcc0d`；开发机 `acceptance.ps1` 已通过，待测试团队 clean VM 验收。
 - 验收口径以 [10-task-coverage.md](10-task-coverage.md) 为准；构建步骤见 [11-packaging-runbook.md](11-packaging-runbook.md)。
 - 两处既定限制：验证阶段（`VERIFY_CHECK`）暂缓；MCP v1 仅配置文件声明 + 重启，不支持运行时注册。
 

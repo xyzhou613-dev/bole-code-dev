@@ -6,7 +6,7 @@
 
 - **SDK、运行时、示例、离线打包脚本、四份交付文档**均已实现，A/B 两条线已合入 `develop`。
 - **真实内网网关**已跑通 console、B8 自检和 GUI；qwen `enable_thinking:false` 已抓包确认。
-- **最终交付 zip 尚未生成**：r5 是旧包；已有一个 r6 候选包，但它早于 toy MCP 0.2.0 / acceptance 的最终改动，不能交付。当前 `develop` 上的 toy 0.2.0、acceptance、UTF-8、RSI/GUI 和 no-thinking 配置还没有一起打过包；打包由测试按 `11-packaging-runbook.md` 执行或由开发重打。
+- **最终交付 zip 已生成**：`bole-offline-r6-final.zip`，SHA256 `aaeeafd8c7e3a520743fd367ce8955b00923a500a453b7d6b604dc1f30dbcc0d`；包含 toy MCP 0.2.0、acceptance、UTF-8/RSI/GUI 和 no-thinking 配置，开发机 `acceptance.ps1` 已通过。
 - **干净目标 VM 由测试团队执行**；`packaging/acceptance.ps1` 已提供一键验收，开发机已完成等价演练。
 - 有两处**按既有决定暂缓/限定的能力**，不是实现遗漏，但需要项目负责人确认验收口径：
   1. **验证阶段**：本基线没有 verify 类会话事件，`VERIFY_CHECK(40)` 保留定义但永不产生；不得伪造。
@@ -19,7 +19,7 @@
 | 交付物 | 状态 | 证据/说明 |
 | --- | --- | --- |
 | SDK 库（DLL + 头文件 + 导入库 + 依赖清单） | 完成 | MSVC 2022 x64 `/MT`；`bole_agent.dll/.lib/.h`；DLL 仅依赖 `KERNEL32.dll`；`VERSION.json` 记录版本 |
-| 离线部署包 | 脚本完成，最终 zip 待打 | `packaging/build-offline.ps1`、`install.ps1`、`verify.ps1`、`acceptance.ps1`；开发机走通 install→verify→C2→selfcheck→GUI |
+| 离线部署包 | 完成 | r6 final zip 已生成；`build-offline.ps1`、`install.ps1`、`verify.ps1`、`acceptance.ps1`；开发机走通 install→verify→C2→selfcheck→GUI |
 | 控制台示例 | 完成 | `examples/console-c`；自动路径、`--rsi`、唯一 session、UTF-8 argv |
 | 界面示例 | 完成 | `examples/gui-win32`；双击自动路径、多轮、日志追加、RSI 复选框、取消、背景重绘修复 |
 | 四份文档 | 完成，待最终包内核对 | `docs/delivery/01-04`；B7 内容已落地；最终包需按测试团队反馈复核 |
@@ -82,17 +82,17 @@
 1. **干净目标 VM**：测试团队执行；用 `packaging/acceptance.ps1`，不跳过 clean-environment 检查。
 2. **Windows 10 x64**：目前只在 Win11 开发机跑过；目标含 Win10 时补一台。
 3. **真实 Ornith 网关**：qwen 已验；Ornith 允许列表/经验包需实际网关复跑（任务不强制，但计划里列了）。
-4. **最终包**：r5 是旧包，r6 候选早于最新 toy/acceptance 改动；需要按 `11-packaging-runbook.md` 重打，包含 12 个 toy 工具、acceptance、no-thinking、UTF-8/RSI/GUI。
+4. **最终包**：r6 final 已生成并通过开发机 acceptance；测试团队仍应在目标 VM 复跑。
 5. **签名/EDR**：未签名交付；目标机安全策略由测试记录。
 6. **独立集成复现**：伙伴/测试按四份 delivery 文档从零集成一次。
 
 ## 五、结论与建议
 
-实现层面已经具备交付条件；**最终 zip 未生成**。第 1/2/4 条的目标机与独立集成复现仍由测试团队在干净 VM 完成（GUI 长任务/取消已在开发机通过，测试复跑留证）。建议：
+实现层面已经具备交付条件；**r6 final zip 已生成**。第 1/2/4 条的目标机与独立集成复现仍由测试团队在干净 VM 完成（GUI 长任务/取消已在开发机通过，测试复跑留证）。建议：
 
-1. 先按 `11-packaging-runbook.md` 打一个 r6；
+1. 把 r6 final zip + SHA256 交给测试；
 2. 测试团队跑 `acceptance.ps1` + GUI 长任务/取消 + 独立集成 + Win10（如适用）；
-3. 通过后再决定交付 tag 和正式发布。
+3. 通过后再决定正式交付 tag。
 
 验证阶段（`VERIFY_CHECK`）和运行时 MCP 注册是既定范围限制，不应在验收时被误判为 bug；若客户要求，需另立需求。
 
@@ -112,6 +112,6 @@
 
 - 四份 delivery 文档在**最终 zip 内的路径与独立集成复现**；
 - Windows 10、Ornith、真实 EDR/签名策略；
-- 最终 r6 重打与测试团队 clean VM 验收。
+- 测试团队 clean VM 验收与正式交付 tag。
 
 冻结契约 02/03/04 与 `native/include/bole_agent.h` 未改。
