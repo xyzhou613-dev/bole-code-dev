@@ -7,6 +7,8 @@
 
 ```powershell
 .\bole_console.exe "算一下 2+2"
+.\bole_console.exe --rsi "算一下 2+2"       # 新任务用 rsi-infer
+.\bole_console.exe --rsi=off "算一下 2+2"   # 显式 standard
 ```
 
 也可以覆盖：
@@ -15,6 +17,7 @@
 .\bole_console.exe <runtime_dir> <dsh_home> "算一下 2+2"
 ```
 
+`--rsi` 只影响新任务（首次会话的默认 preset），不改变运行中的任务。
 不带参数时会使用默认 prompt；从资源管理器双击时窗口会停在
 `Press Enter to close...`（`BOLE_NO_PAUSE=1` 可关闭）。
 

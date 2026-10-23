@@ -12,18 +12,23 @@
 #include "bole_agent.h"
 
 #define WM_BOLE_EVENT (WM_APP + 1)
+#define WM_BOLE_RSI (WM_APP + 2)
 #define ID_INPUT 101
 #define ID_SUBMIT 102
 #define ID_CANCEL 103
 #define ID_STATUS 104
 #define ID_RESULT 105
+#define ID_RSI 106
 #define PATH_CAP 4096
 
-static HWND g_input, g_submit, g_cancel, g_status, g_result;
+static HWND g_input, g_submit, g_cancel, g_status, g_result, g_rsi;
 static bole_handle* g_handle;
 static bole_session* g_session;
 static HANDLE g_worker;
 static volatile LONG g_running;
+static volatile LONG g_rsi_enabled;
+static volatile LONG g_rsi_pending;
+static volatile LONG g_has_turn;
 static char g_runtime_dir[PATH_CAP];
 static char g_dsh_home[PATH_CAP];
 static char g_path_error[512];
@@ -182,7 +187,10 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
   HWND hwnd = (HWND)user;
   switch (event->type) {
     case BOLE_EVENT_RUNTIME_READY: post_text(hwnd, ID_STATUS, "runtime ready"); break;
-    case BOLE_EVENT_TASK_STARTED: post_text(hwnd, ID_STATUS, "task started"); break;
+    case BOLE_EVENT_TASK_STARTED:
+      InterlockedExchange(&g_has_turn, 1);
+      post_text(hwnd, ID_STATUS, "task started");
+      break;
     case BOLE_EVENT_TOOL_CALL_STARTED: post_text(hwnd, ID_STATUS, "tool running"); break;
     case BOLE_EVENT_TOOL_CALL_FINISHED: post_text(hwnd, ID_STATUS, "tool done"); break;
     case BOLE_EVENT_TEXT_DELTA:
@@ -219,6 +227,7 @@ static DWORD WINAPI worker(LPVOID param) {
     config.dsh_home = g_dsh_home;
     config.model_provider = "bole";
     config.model_name = "qwen3.8-27b";
+    config.rsi_enabled = (int32_t)InterlockedCompareExchange(&g_rsi_enabled, 0, 0);
     config.event_cb = on_event;
     config.user_data = hwnd;
 
@@ -237,6 +246,26 @@ static DWORD WINAPI worker(LPVOID param) {
       InterlockedExchange(&g_running, 0);
       return 0;
     }
+    bole_rsi_state state;
+    memset(&state, 0, sizeof(state));
+    state.size = sizeof(state);
+    int requested = (int)InterlockedCompareExchange(&g_rsi_enabled, 0, 0);
+    if (bole_rsi_get(g_handle, &state) == 0) {
+      if (requested != state.enabled) {
+        if (bole_rsi_set(g_handle, requested) != 0) {
+          requested = state.enabled;
+          InterlockedExchange(&g_rsi_enabled, requested);
+        }
+      }
+      PostMessageA(hwnd, WM_BOLE_RSI, (WPARAM)requested, 0);
+    }
+  }
+
+  if (InterlockedCompareExchange(&g_rsi_pending, 0, 0)) {
+    (void)bole_rsi_set(g_handle, (int)InterlockedCompareExchange(&g_rsi_enabled, 0, 0));
+    InterlockedExchange(&g_rsi_pending, 0);
+    g_session = NULL;
+    InterlockedExchange(&g_has_turn, 0);
   }
 
   if (g_session == NULL) {
@@ -263,6 +292,39 @@ static DWORD WINAPI worker(LPVOID param) {
   return 0;
 }
 
+static void rsi_status(HWND hwnd, int enabled, const char* text) {
+  SendMessageA(g_rsi, BM_SETCHECK, enabled ? BST_CHECKED : BST_UNCHECKED, 0);
+  if (text != NULL) post_text(hwnd, ID_STATUS, text);
+}
+
+static void apply_rsi(HWND hwnd, int enabled) {
+  if (g_handle == NULL) {
+    rsi_status(hwnd, enabled, enabled ? "RSI on (first task)" : "RSI off (first task)");
+    return;
+  }
+  if (g_running) {
+    InterlockedExchange(&g_rsi_pending, 1);
+    rsi_status(hwnd, enabled, enabled ? "RSI on (next task)" : "RSI off (next task)");
+    return;
+  }
+  if (bole_rsi_set(g_handle, enabled) != 0) {
+    rsi_status(hwnd, !enabled, "RSI update failed");
+    return;
+  }
+  if (g_session != NULL && !InterlockedCompareExchange(&g_has_turn, 0, 0)) {
+    const char* preset = enabled ? "rsi-infer" : "standard";
+    if (bole_session_set_preset(g_session, preset) == 0) {
+      rsi_status(hwnd, enabled, enabled ? "RSI on" : "RSI off");
+      return;
+    }
+  }
+  if (g_session != NULL) {
+    g_session = NULL;
+    InterlockedExchange(&g_has_turn, 0);
+  }
+  rsi_status(hwnd, enabled, enabled ? "RSI on (next task)" : "RSI off (next task)");
+}
+
 static void on_command(HWND hwnd, int id) {
   if (id == ID_SUBMIT) {
     if (InterlockedCompareExchange(&g_running, 1, 0) != 0) return;
@@ -278,6 +340,10 @@ static void on_command(HWND hwnd, int id) {
     }
   } else if (id == ID_CANCEL) {
     if (g_session != NULL) bole_cancel(g_session);
+  } else if (id == ID_RSI) {
+    int enabled = SendMessageA(g_rsi, BM_GETCHECK, 0, 0) == BST_CHECKED;
+    InterlockedExchange(&g_rsi_enabled, enabled);
+    apply_rsi(hwnd, enabled);
   }
 }
 
@@ -290,14 +356,26 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                                10, 44, 90, 26, hwnd, (HMENU)ID_SUBMIT, NULL, NULL);
       g_cancel = CreateWindowA("BUTTON", "Cancel", WS_CHILD | WS_VISIBLE,
                                110, 44, 90, 26, hwnd, (HMENU)ID_CANCEL, NULL, NULL);
+      g_rsi = CreateWindowA("BUTTON", "RSI", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+                            210, 46, 70, 24, hwnd, (HMENU)ID_RSI, NULL, NULL);
       g_status = CreateWindowA("STATIC", g_path_error[0] != '\0' ? g_path_error : "idle",
-                               WS_CHILD | WS_VISIBLE, 220, 48, 250, 20,
+                               WS_CHILD | WS_VISIBLE, 290, 48, 180, 20,
                                hwnd, (HMENU)ID_STATUS, NULL, NULL);
       g_result = CreateWindowA("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE |
                                ES_AUTOVSCROLL | WS_VSCROLL,
                                10, 80, 460, 240, hwnd, (HMENU)ID_RESULT, NULL, NULL);
       return 0;
     case WM_COMMAND: on_command(hwnd, LOWORD(wp)); return 0;
+    case WM_BOLE_RSI:
+      InterlockedExchange(&g_rsi_enabled, (LONG)wp);
+      SendMessageA(g_rsi, BM_SETCHECK, wp != 0 ? BST_CHECKED : BST_UNCHECKED, 0);
+      return 0;
+    case WM_CTLCOLORSTATIC: {
+      HDC hdc = (HDC)wp;
+      SetBkMode(hdc, TRANSPARENT);
+      SetTextColor(hdc, GetSysColor(COLOR_WINDOWTEXT));
+      return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+    }
     case WM_BOLE_EVENT: {
       char* text = (char*)lp;
       if ((int)wp == ID_STATUS) SetWindowTextA(g_status, text);
@@ -329,12 +407,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int show) {
 
   WNDCLASSA cls;
   memset(&cls, 0, sizeof(cls));
+  cls.style = CS_HREDRAW | CS_VREDRAW;
+  cls.hbrBackground = GetSysColorBrush(COLOR_WINDOW);
   cls.lpfnWndProc = WndProc;
   cls.hInstance = instance;
   cls.lpszClassName = "BoleSdkGui";
   cls.hCursor = LoadCursor(NULL, IDC_ARROW);
   RegisterClassA(&cls);
-  HWND hwnd = CreateWindowA("BoleSdkGui", "Bole SDK", WS_OVERLAPPEDWINDOW,
+  HWND hwnd = CreateWindowA("BoleSdkGui", "Bole SDK",
+                            WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
                             100, 100, 500, 380, NULL, NULL, instance, NULL);
   ShowWindow(hwnd, show);
   MSG msg;

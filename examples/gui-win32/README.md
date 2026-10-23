@@ -36,6 +36,8 @@ $env:BOLE_DSH_HOME = "<package>\home"
 
 ## 行为
 
+- RSI 复选框控制**新任务**的 preset（`standard` / `rsi-infer`）；
+  首次 Submit 前勾选直接生效；已有任务后勾选，会在下一轮/下一次提交时用新 preset 建新 session；
 - 同一进程内可以连续提交多轮，复用同一个 session；不需要清 `home\sessions`；
 - 每个 GUI 进程使用 `gui-<pid>` 作为 session id，重启不会和上一次冲突；
 - 结果框按事件顺序**追加**，不是只显示最新一条；
