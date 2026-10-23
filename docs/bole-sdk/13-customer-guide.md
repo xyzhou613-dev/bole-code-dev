@@ -171,21 +171,13 @@ PASS toy MCP: 12 tools
 cd D:\apps\BoleAgentSdk\samples\console-c
 
 .\bole_console.exe `
-  "Use the external MCP tool mcp__everything__echo with message hello-external-mcp, then answer with its output."
+  "使用外部 MCP 工具 mcp__everything__echo 输出消息 hello-external-mcp, 然后回答带上他的输出"
 ```
 
-输出中应出现：
-
-```text
-[tool] start ... "tool":"mcp__everything__echo"
-[tool] done  ... "resultSummary":"Echo: hello-external-mcp"
-[task] finished
-```
-
-![image-20261023152553258](assets/image-20261023152553258.png)
+![image-20261023153609783](assets/image-20261023153609783.png)
 
 > 新增其他 MCP 服务、安装外部 MCP 服务：见《MCP 工具接入与示例》
-> （`05-mcp-integration.md`）。
+> （`mcp-integration.md`）。
 
 ## 常见问题
 
