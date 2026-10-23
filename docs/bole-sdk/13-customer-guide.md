@@ -139,16 +139,7 @@ cd D:\apps\BoleAgentSdk\samples\console-c
 [task] finished
 ```
 
-截图时框住这三行：
-
-```text
-① [tool] start 里的 mcp__toy__add
-② [tool] done  里的 resultSummary:"3"
-③ [task] finished
-```
-
-> 【贴图位置 1】把控制台或 GUI 截图放在这里；用红框圈住
-> `mcp__toy__add`、`resultSummary:"3"`、`finished`。
+![image-20261023151530802](assets/image-20261023151530802.png)
 
 如果需要证明 12 个工具都已注册：
 
@@ -173,44 +164,8 @@ PASS toy MCP: 12 tools
 
 它是独立于 SDK 的第三方 MCP 进程，免费、开源，通过 stdio 接入。
 
-#### 安装
-
-```powershell
-mkdir D:\mcp-servers\everything
-cd D:\mcp-servers\everything
-npm init -y
-npm install @modelcontextprotocol/server-everything@2.0.0
-```
-
-如果目标机不能访问 npm，请在构建机安装后把整个
-`D:\mcp-servers\everything` 目录拷过去。
-
-#### 加入配置
-
-编辑：
-
-```text
-D:\apps\BoleAgentSdk\home\cordis.patch.yml
-```
-
-在已有 `- insert:` 下追加：
-
-```yaml
-    - id: mcp-everything
-      name: '@deepseek-ai/dsh-mcp-client'
-      config:
-        transport: stdio
-        serverName: everything
-        command: 'D:/apps/BoleAgentSdk/runtime/node.exe'
-        args: ['D:/mcp-servers/everything/node_modules/@modelcontextprotocol/server-everything/dist/index.js']
-        cwd: 'D:/mcp-servers/everything'
-        toolCallTimeoutMs: 15000
-        failOnStartupError: false
-```
-
-#### 重启并调用
-
-关闭 GUI/控制台，再新开一个进程。然后：
+安装和接入步骤见《外部 MCP 服务安装指南》（随客户版压缩包一起提供，
+`06-external-mcp-install.md`）。按该文档安装、配置并重启运行时后，再执行：
 
 ```powershell
 cd D:\apps\BoleAgentSdk\samples\console-c

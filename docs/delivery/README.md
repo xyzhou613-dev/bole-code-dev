@@ -11,6 +11,7 @@
 | `03-offline-deploy.md` | 离线部署：目录、安装、版本、校验、自检、网络与安全、常见故障 | 客户现场运维 | 07 |
 | `04-error-codes.md` | 错误码：数值、常量、wire code、可重试、`last_error`、示例 | 伙伴开发者/排障 | 04 |
 | `05-mcp-integration.md` | MCP 示例与新增服务：自带 12 工具、外部 Everything Server、配置模板、截图位置 | 伙伴开发者/测试 | 01/03 |
+| `06-external-mcp-install.md` | 外部 MCP 安装指南：Everything Server 安装、配置、重启、验证、卸载 | 伙伴开发者/现场 | 05 |
 
 ## 写作规则
 
