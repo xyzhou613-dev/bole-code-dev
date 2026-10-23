@@ -1,6 +1,6 @@
 # 伯乐 Agent SDK 使用说明
 
-本文只说明怎么把 SDK 跑起来。按顺序做 5 步即可；第 6 章是两个 MCP 工具示例和新增 MCP 的方法。
+本文只说明怎么把 SDK 跑起来。按顺序做 5 步即可；第 6 章是两个 MCP 工具示例；新增/安装步骤在独立文档中。
 
 ## 第 1 步：解压
 
@@ -193,76 +193,13 @@ cd D:\apps\BoleAgentSdk\samples\console-c
 > 【贴图位置 2】把外部 MCP 截图放在这里；用红框圈住
 > `mcp__everything__echo`、`Echo: hello-external-mcp`、`finished`。
 
-### 6.3 如何新增一个 MCP 服务
-
-#### 第 1 步：准备服务
-
-新 MCP 服务必须能通过 stdio 启动并完成 MCP 握手。先在命令行直接运行它，确认不会一启动就退出。
-
-#### 第 2 步：修改配置
-
-编辑：
-
-```text
-<SDK_HOME>\home\cordis.patch.yml
-```
-
-在 `- insert:` 列表下增加一项：
-
-```yaml
-    - id: mcp-<name>
-      name: '@deepseek-ai/dsh-mcp-client'
-      config:
-        transport: stdio
-        serverName: <name>
-        command: '<可执行文件绝对路径>'
-        args:
-          - '<参数1>'
-          - '<参数2>'
-        cwd: '<服务工作目录>'
-        toolCallTimeoutMs: 15000
-        failOnStartupError: false
-```
-
-字段说明：
-
-| 字段 | 说明 |
-| --- | --- |
-| `id` | 配置项唯一名，建议 `mcp-<name>` |
-| `serverName` | 工具前缀，最终工具名为 `mcp__<serverName>__<tool>` |
-| `command` | 启动程序，例如 `node.exe` |
-| `args` | 服务脚本和参数 |
-| `cwd` | 服务工作目录，建议绝对路径 |
-| `toolCallTimeoutMs` | 单次工具调用超时 |
-| `failOnStartupError` | 启动失败是否让运行时失败；演示建议 `false` |
-
-#### 第 3 步：重启运行时
-
-关闭所有 GUI/console，再启动新进程。MCP 配置只在运行时启动时读取。
-
-#### 第 4 步：按工具名调用
-
-规则：
-
-```text
-mcp__<serverName>__<toolName>
-```
-
-例如 `serverName: filesystem`、工具 `read_file`，调用名就是：
-
-```text
-mcp__filesystem__read_file
-```
-
-#### 第 5 步：确认成功
-
-- 输出出现 `[tool] start` / `[tool] done`；
-- `isError` 为 `false`；
-- 工具结果出现在模型回答中；
-- 任务最终 `[task] finished`。
-
-完整配置字段、常见问题和外部服务说明见《MCP 工具接入与示例》
-（随客户版压缩包一起提供）。
+> 新增其他 MCP 服务：见《MCP 工具接入与示例》
+> （`05-mcp-integration.md`）。
+>
+> 安装外部 MCP 服务：见《外部 MCP 服务安装指南》
+> （`06-external-mcp-install.md`）。
+>
+> 本文只展示两个示例，不展开安装和配置步骤。
 
 ## 常见问题
 
