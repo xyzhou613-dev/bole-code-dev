@@ -164,8 +164,8 @@ PASS toy MCP: 12 tools
 
 它是独立于 SDK 的第三方 MCP 进程，免费、开源，通过 stdio 接入。
 
-安装和接入步骤见《外部 MCP 服务安装指南》（随客户版压缩包一起提供，
-`06-external-mcp-install.md`）。按该文档安装、配置并重启运行时后，再执行：
+安装和接入步骤见《MCP 工具接入与示例》（随客户版压缩包一起提供，
+`05-mcp-integration.md`）。按该文档安装、配置并重启运行时后，再执行：
 
 ```powershell
 cd D:\apps\BoleAgentSdk\samples\console-c
@@ -182,24 +182,10 @@ cd D:\apps\BoleAgentSdk\samples\console-c
 [task] finished
 ```
 
-截图时框住：
+![image-20261023152553258](assets/image-20261023152553258.png)
 
-```text
-① mcp__everything__echo
-② Echo: hello-external-mcp
-③ finished
-```
-
-> 【贴图位置 2】把外部 MCP 截图放在这里；用红框圈住
-> `mcp__everything__echo`、`Echo: hello-external-mcp`、`finished`。
-
-> 新增其他 MCP 服务：见《MCP 工具接入与示例》
+> 新增其他 MCP 服务、安装外部 MCP 服务：见《MCP 工具接入与示例》
 > （`05-mcp-integration.md`）。
->
-> 安装外部 MCP 服务：见《外部 MCP 服务安装指南》
-> （`06-external-mcp-install.md`）。
->
-> 本文只展示两个示例，不展开安装和配置步骤。
 
 ## 常见问题
 

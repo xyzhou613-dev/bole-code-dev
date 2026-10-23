@@ -1,13 +1,16 @@
 # MCP 工具接入与示例
 
-本文给两类示例，并说明如何新增一个 MCP 服务：
+本文说明三件事：
 
-1. SDK 调用自带的 12 个工具（选一个代表截图）；
-2. SDK 调用外部开源 MCP 服务（官方 Everything Server）；
-3. 新增 MCP 服务的配置步骤。
+1. SDK 怎么调用自带的 12 个工具；
+2. SDK 怎么调用一个外部开源 MCP 服务；
+3. 怎么新增任意 MCP 服务。
 
-文中的 `<SDK_HOME>` 指安装目录，例如 `D:\apps\BoleAgentSdk`；工具名为
-`mcp__<serverName>__<toolName>`。
+文中的 `<SDK_HOME>` 指安装目录，例如 `D:\apps\BoleAgentSdk`。工具名规则：
+
+```text
+mcp__<serverName>__<toolName>
+```
 
 ## 1. 示例一：调用自带的 12 个工具
 
@@ -30,8 +33,6 @@
 
 ### 1.1 代表任务：add 1+2
 
-在控制台执行：
-
 ```powershell
 cd <SDK_HOME>\samples\console-c
 
@@ -49,23 +50,15 @@ cd <SDK_HOME>\samples\console-c
 
 ### 1.2 截图位置
 
-如果截控制台，框住这三行：
+控制台截图框住：
 
 ```text
-第 1 处：[tool] start ... mcp__toy__add
-第 2 处：[tool] done  ... "resultSummary":"3"
-第 3 处：[task] finished
+① [tool] start 里的 mcp__toy__add
+② [tool] done 里的 resultSummary:"3"
+③ [task] finished
 ```
 
-如果截 GUI，框住：
-
-```text
-输入框：调用玩具工具 mcp__toy__add 计算 1+2，然后用结果回答。
-状态栏：finished
-结果区：mcp__toy__add 的返回结果 3，或模型回答 1 + 2 = 3
-```
-
-> 【贴图位置 1】把上面的控制台或 GUI 截图放在这里；用红框圈住 `mcp__toy__add`、`resultSummary:"3"`、`finished`。
+GUI 截图框住输入框中的 `mcp__toy__add`、状态栏 `finished`、结果区中的 `3`。
 
 ### 1.3 证明 12 个工具已注册
 
@@ -79,8 +72,6 @@ cd <SDK_HOME>\samples\console-c
 PASS toy MCP: 12 tools
 ```
 
-截图时可以把这行和 `add` 的调用放在同一张图里；不需要把 12 个工具都跑一遍。
-
 > `fail` 是故意返回错误的工具，不要拿它作为“成功调用”的截图。
 
 ## 2. 示例二：调用外部开源 MCP 服务
@@ -92,7 +83,7 @@ PASS toy MCP: 12 tools
 - npm 包：`@modelcontextprotocol/server-everything@2.0.0`
 - 免费、开源，适合验证客户端能否启动并调用外部 MCP。
 
-它是独立于本 SDK 的 Node 进程，通过 stdio 接入，不需要公网 API。
+它是独立于本 SDK 的 Node 进程，通过 stdio 接入。
 
 ### 2.1 安装服务
 
@@ -105,7 +96,14 @@ npm init -y
 npm install @modelcontextprotocol/server-everything@2.0.0
 ```
 
-需要 Node.js 24+；也可以用 SDK 自带的 `runtime\node.exe` 运行，但安装依赖仍需要 npm。
+需要 Node.js 24+。确认入口文件存在：
+
+```text
+D:\mcp-servers\everything\node_modules\@modelcontextprotocol\server-everything\dist\index.js
+```
+
+**目标机不能联网时**：在构建机执行 `npm install`，然后把整个
+`D:\mcp-servers\everything` 目录复制到目标机；运行不需要联网。
 
 ### 2.2 加入配置
 
@@ -130,11 +128,21 @@ npm install @modelcontextprotocol/server-everything@2.0.0
         failOnStartupError: false
 ```
 
-把 `command`、`args` 换成自己的实际路径；Windows 路径用 `/` 或双反斜杠。
+把 `command`、`args`、`cwd` 换成自己的实际路径；Windows 路径用 `/` 或双反斜杠。
+
+| 字段 | 说明 |
+| --- | --- |
+| `id` | 配置项唯一名 |
+| `serverName` | 工具前缀，最终工具名为 `mcp__everything__<tool>` |
+| `command` | 启动程序，例如 SDK 自带的 `runtime\node.exe` |
+| `args` | 服务入口文件 |
+| `cwd` | 服务工作目录，建议绝对路径 |
+| `toolCallTimeoutMs` | 单次工具调用超时 |
+| `failOnStartupError` | 启动失败是否让运行时失败；演示建议 `false` |
 
 ### 2.3 重启运行时
 
-关闭 GUI/控制台，再新开一个进程。MCP 配置只在运行时启动时读取，**改完必须重启**。
+关闭所有 GUI/控制台，再新开进程。MCP 配置只在运行时启动时读取，**改完必须重启**。
 
 ### 2.4 验证调用
 
@@ -162,26 +170,34 @@ Echo: hello-external-mcp
 ### 2.5 截图位置
 
 ```text
-第 1 处：[tool] start ... mcp__everything__echo
-第 2 处：[tool] done  ... "resultSummary":"Echo: hello-external-mcp"
-第 3 处：模型最终回答中的 Echo: hello-external-mcp
+① [tool] start 里的 mcp__everything__echo
+② [tool] done 里的 Echo: hello-external-mcp
+③ 模型最终回答中的 Echo: hello-external-mcp
 ```
 
-如果截 GUI，框住输入框里的 `mcp__everything__echo`、状态栏 `finished`、结果区的 `Echo: hello-external-mcp`。
+GUI 截图框住输入框中的 `mcp__everything__echo`、状态栏 `finished`、结果区中的 `Echo: hello-external-mcp`。
 
-> 【贴图位置 2】把外部 MCP 截图放在这里；用红框圈住 `mcp__everything__echo`、`Echo: hello-external-mcp`、`finished`。
+### 2.6 卸载
 
-## 3. 如何新增一个 MCP 服务
+1. 删除 `home\cordis.patch.yml` 中的 `mcp-everything` 配置项；
+2. 重启运行时；
+3. 删除 `D:\mcp-servers\everything` 目录。
+
+## 3. 如何新增任意 MCP 服务
 
 ### 第 1 步：确认服务能独立启动
 
 新 MCP 服务必须能通过 stdio 启动并完成 MCP 握手。先在命令行直接运行它，确认不依赖交互输入、不会一启动就退出。
 
-### 第 2 步：在 home 配置中加一项
+### 第 2 步：修改配置
 
-文件：`<SDK_HOME>\home\cordis.patch.yml`
+编辑：
 
-模板：
+```text
+<SDK_HOME>\home\cordis.patch.yml
+```
+
+在 `- insert:` 列表下增加一项：
 
 ```yaml
     - id: mcp-<name>
@@ -198,59 +214,48 @@ Echo: hello-external-mcp
         failOnStartupError: false
 ```
 
-字段说明：
-
-| 字段 | 说明 |
-| --- | --- |
-| `id` | 配置项唯一名，建议 `mcp-<name>` |
-| `serverName` | 工具前缀，最终工具名为 `mcp__<serverName>__<tool>` |
-| `command` | 启动可执行文件，例如 `node.exe` 或 `python.exe` |
-| `args` | 启动参数，例如服务脚本路径 |
-| `cwd` | 服务工作目录；相对路径可能受启动目录影响，建议绝对路径 |
-| `toolCallTimeoutMs` | 单次工具调用超时 |
-| `failOnStartupError` | 工具启动失败时是否让运行时失败；演示建议 `false` |
-
 ### 第 3 步：重启运行时
 
 关闭所有 GUI/console，再启动新进程。旧进程不会热加载新配置。
 
-### 第 4 步：用工具名调用
+### 第 4 步：按工具名调用
 
-工具名规则：
+规则：
 
 ```text
 mcp__<serverName>__<toolName>
 ```
 
-例如 `serverName: everything`、工具 `echo`，模型看到的是：
+例如 `serverName: filesystem`、工具 `read_file`，调用名就是：
 
 ```text
-mcp__everything__echo
+mcp__filesystem__read_file
 ```
 
 ### 第 5 步：确认成功
 
-- 模型输出中出现 `[tool] start` / `[tool] done`；
+- 输出出现 `[tool] start` / `[tool] done`；
 - `[tool] done` 的 `isError` 为 `false`；
-- 工具结果出现在模型回答里；
-- 任务最终为 `[task] finished`。
+- 工具结果出现在模型回答中；
+- 任务最终 `[task] finished`。
 
 ## 4. 已验证
 
 - 自带工具：真实网关下 `mcp__toy__add` 返回 `3`；12 个工具均已实际调用过。
 - 外部服务：`@modelcontextprotocol/server-everything@2.0.0` 的 `echo` 返回
   `Echo: hello-external-mcp`。
-- 截图由交付方在自己的干净环境补拍；本文只标位置。
+- 截图由交付方在自己的环境补拍；本文已标出截图位置。
 
 ## 5. 常见问题
 
 | 现象 | 处理 |
 | --- | --- |
-| 工具没有出现 | 检查 `home\cordis.patch.yml` 是否在 `- insert:` 下、缩进是否正确 |
-| `failed to import` / 启动失败 | 检查 `command`、`args`、`cwd` 路径；先手动启动服务 |
+| 工具没有出现 | 检查 `home\cordis.patch.yml` 是否在 `- insert:` 下、缩进是否正确；是否重启 |
+| `failed to import` / 服务启动失败 | 检查 `command`、`args`、`cwd` 路径；先手动启动服务 |
 | 工具调用超时 | 加大 `toolCallTimeoutMs`；检查服务是否卡住 |
 | 改了配置不生效 | 没有重启运行时；MCP 只在启动时读取 |
 | 工具名不对 | 用 `mcp__<serverName>__<toolName>`，不要用裸工具名 |
+| 路径含空格 | YAML 中用引号包住整个路径 |
 
 ## 6. 说明与限制
 
