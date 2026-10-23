@@ -9,5 +9,5 @@
     "@deepseek-ai/dsh-skill-bole-experience": "0.1.7-alpha.2"
   },
   "presets": ["standard", "rsi-infer"],
-  "toyMcp": "0.1.0"
+  "toyMcp": "0.2.0"
 }
