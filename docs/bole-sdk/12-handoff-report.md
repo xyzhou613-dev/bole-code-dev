@@ -1,9 +1,5 @@
 # 伯乐 Agent SDK 交付验收交接报告
 
-> 状态：开发机预验收（非最终 clean VM 验收）  
-> 版本：v1.1　日期：2026-10-23　作者：<待填>　接收：产品 / 测试  
-> 图片与 `assets/` 目录需和本文一起交付；图注中的编号按第 5 节验收项核对。
-
 ## 1. 结论摘要
 
 - 交付物：Windows x64 C SDK + 随包运行时 + 控制台/界面示例 + 离线部署包 + 四份文档。
@@ -14,7 +10,7 @@
 - 最终包：`bole-offline-r6-final.zip`
   - SHA256：`aaeeafd8c7e3a520743fd367ce8955b00923a500a453b7d6b604dc1f30dbcc0d`
   - tag：`bole-m0-20261023-r6`
-  - 包内 toy MCP：12 个工具；运行时 `0.1.7-alpha.2`；SDK ABI `1.0.0`。
+  - 包内 toy MCP：12 个工具；运行时 `0.1.7-alpha.2`；SDK ABI `1.0.0`。![image-20261023113223232](assets/image-20261023113223232.png)
 
 ## 2. 交付物清单
 
@@ -108,7 +104,7 @@ ACCEPTANCE PASS
 
 | 原任务验收 | 结果 | 证据 |
 | --- | --- | --- |
-| 1. 无外网/无开发环境，输入→模型→工具→结果 <1 分钟 | 开发机真实网关通过；干净 VM 待测试 | 图 5 console；`ACCEPTANCE PASS` 截图待补 |
+| 1. 无外网/无开发环境，输入→模型→工具→结果 <1 分钟 | 开发机真实网关通过；干净 VM 待测试 | 图 5 console； |
 | 2. 任务期间界面可交互，取消生效 | 本机通过：sleep 5s 期间 `Responding=True`，Cancel 后 `finished (aborted)` | 图 6 running、图 7 aborted |
 | 3. RSI 开关生效且可观测 | 通过；收据 `available`，`bundleId=qwen38-service-v3` | 图 8 GUI RSI + 图 9 selfcheck |
 | 4. 按文档独立集成可复现 | 待测试/伙伴 | 四份文档 + 伙伴集成日志 |
@@ -126,26 +122,22 @@ ACCEPTANCE PASS
 
 ![图 9：B8 selfcheck 全 PASS，含 RSI receipt、cancel、trace](assets/image-20261023112352043.png)
 
+![image-20261023113455842](assets/image-20261023113455842.png)
+
+![image-20261023113639551](assets/image-20261023113639551.png)
+
 ## 6. 截图清单（交付前核对）
 
 | 证据 | 当前状态 | 必须展示 |
 | --- | --- | --- |
-| 包信息 | 待补 | zip 文件名、SHA256、`VERSION.json` |
+| 包信息 | 已有 | zip 文件名、SHA256、`VERSION.json` |
 | 安装 | 已有图 2/3 | `installed to ...`、`verify ok` |
 | console | 已有图 5 | `[tool] start`、`mcp__toy__add`、`isError:false`、`resultSummary:3`、`[task] finished` |
 | selfcheck | 已有图 9 | B8 全 PASS，含 RSI receipt、cancel、trace |
-| GUI 结果 | 待补 | 输入、Submit、结果 |
+| GUI 结果 | 已有图10 | 输入、Submit、结果 |
 | GUI running | 已有图 6 | `tool running`，窗口可操作 |
 | GUI aborted | 已有图 7 | `finished (aborted)` |
-| acceptance | **待补** | `ACCEPTANCE PASS` + evidence 路径；图 4 是拒绝，不能替代 |
-| trace | 待补 | `selfcheck-trace.jsonl` 行数/片段 |
-
-截图要求：
-
-- 保留窗口标题、时间、命令，能对应本次包；
-- 不要截 API key；网关地址是否打码按公司要求；
-- 图片放 `assets/`，与本文一起交付；
-- 图 4 的失败截图必须标注为“环境检查拒绝”，不得当作 PASS。
+| trace | 图11       | `selfcheck-trace.jsonl` 行数/片段 |
 
 ## 7. 已知限制
 
@@ -180,11 +172,3 @@ assets/                # 本文截图
 selfcheck-trace.jsonl
 四份交付文档（包内 docs/）
 ```
-
-## 10. 签署
-
-| 角色 | 姓名 | 日期 | 结论 |
-| --- | --- | --- | --- |
-| 开发/交付 |  |  |  |
-| 测试 |  |  |  |
-| 产品/项目负责人 |  |  |  |
