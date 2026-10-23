@@ -182,6 +182,9 @@ npm init -y
 npm install @modelcontextprotocol/server-everything@2.0.0
 ```
 
+如果目标机不能访问 npm，请在构建机安装后把整个
+`D:\mcp-servers\everything` 目录拷过去。
+
 #### 加入配置
 
 编辑：
@@ -303,8 +306,8 @@ mcp__filesystem__read_file
 - 工具结果出现在模型回答中；
 - 任务最终 `[task] finished`。
 
-完整配置字段、常见问题和外部服务说明见同目录
-`05-mcp-integration.md`（单独交付）。
+完整配置字段、常见问题和外部服务说明见《MCP 工具接入与示例》
+（随客户版压缩包一起提供）。
 
 ## 常见问题
 
