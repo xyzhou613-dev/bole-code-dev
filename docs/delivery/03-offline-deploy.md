@@ -33,7 +33,8 @@ bole-agent-sdk-<版本>-win-x64/
 ├── VERSION.json                # 组件版本清单
 ├── SHA256SUMS                  # 文件校验清单
 ├── install.ps1                 # 校验、安装与 home 生成
-└── verify.ps1                  # 安装后自检（文件/版本/profile/组合）
+├── verify.ps1                  # 安装后自检（文件/版本/profile/组合）
+└── acceptance.ps1              # 干净 VM：安装 + 真实 C2 + B8 + GUI + 证据
 ```
 
 **目录职责**

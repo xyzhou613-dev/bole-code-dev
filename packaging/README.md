@@ -7,6 +7,7 @@
 | `build-offline.ps1` | 在 Windows 构建机上装配 `bole-agent-sdk-win-x64/`，生成 `VERSION.json` 与 `SHA256SUMS`，打 zip |
 | `install.ps1` | 校验哈希后复制到 `%LOCALAPPDATA%\BoleAgentSdk` |
 | `verify.ps1` | 安装后自检：文件齐、dsh 版本锁定 |
+| `acceptance.ps1` | 干净 VM 一条命令：安装、真实网关 C2、B8 自检、GUI 启动、证据收集；开发机复测可加 `-SkipCleanEnvironmentCheck` |
 
 目录约定见 `docs/bole-sdk/07-offline-package.md`：
 
@@ -19,7 +20,9 @@ bole-agent-sdk-win-x64/
 ├── docs/      四份交付文档
 ├── VERSION.json
 ├── SHA256SUMS
-└── install.ps1
+├── install.ps1
+├── verify.ps1
+└── acceptance.ps1
 ```
 
 构建参数：

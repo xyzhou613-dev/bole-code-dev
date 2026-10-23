@@ -141,6 +141,7 @@ if ($GuiExe -ne "") {
 Copy-Item (Join-Path $repo "docs\delivery\*") (Join-Path $root "docs") -Recurse -Force
 Copy-Item (Join-Path $repo "packaging\install.ps1") $root -Force
 Copy-Item (Join-Path $repo "packaging\verify.ps1") $root -Force
+Copy-Item (Join-Path $repo "packaging\acceptance.ps1") $root -Force
 
 # --- 6. Version manifest and checksums ------------------------------------
 $inputs = Get-Content (Join-Path $repo "runtime\version.inputs.json") -Raw | ConvertFrom-Json
