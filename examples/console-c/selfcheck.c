@@ -1,5 +1,6 @@
 /* B8 self-check: C ABI + runtime + toy MCP on an installed package.
- * Usage: bole_selfcheck <runtime_dir> <dsh_home> "<prompt>"            */
+ * Usage: bole_selfcheck [prompt]
+ *        bole_selfcheck <runtime_dir> <dsh_home> "<prompt>"  (legacy)  */
 #include <stdio.h>
 #include <string.h>
 #ifdef _WIN32
@@ -8,6 +9,7 @@
 #include <unistd.h>
 #endif
 #include "bole_agent.h"
+#include "example_paths.h"
 
 static void sleep_ms(int ms) {
 #ifdef _WIN32
@@ -145,16 +147,31 @@ static int run_turn(bole_handle* handle, const char* prompt, const char* preset,
 }
 
 int main(int argc, char** argv) {
-  if (argc < 4) {
-    fprintf(stderr, "usage: %s <runtime_dir> <dsh_home> <prompt>\n", argv[0]);
-    return 2;
+  char runtime[BOLE_EXAMPLE_PATH_CAP];
+  char home[BOLE_EXAMPLE_PATH_CAP];
+  const char* prompt = BOLE_EXAMPLE_DEFAULT_PROMPT;
+
+  if (argc >= 4) {
+    snprintf(runtime, sizeof(runtime), "%s", argv[1]);
+    snprintf(home, sizeof(home), "%s", argv[2]);
+    prompt = argv[3];
+  } else if (argc == 3) {
+    snprintf(runtime, sizeof(runtime), "%s", argv[1]);
+    snprintf(home, sizeof(home), "%s", argv[2]);
+  } else {
+    if (bole_example_resolve(runtime, sizeof(runtime), home, sizeof(home)) != 0) {
+      fprintf(stderr, "cannot find runtime/home; pass <runtime_dir> <dsh_home> <prompt> or run from the package\n");
+      return 2;
+    }
+    if (argc == 2) prompt = argv[1];
   }
+
   memset(&g, 0, sizeof(g));
   bole_config config;
   memset(&config, 0, sizeof(config));
   config.size = sizeof(config);
-  config.runtime_dir = argv[1];
-  config.dsh_home = argv[2];
+  config.runtime_dir = runtime;
+  config.dsh_home = home;
   config.model_provider = "bole";
   config.model_name = "qwen3.8-27b";
   config.event_cb = on_event;
@@ -183,7 +200,20 @@ int main(int argc, char** argv) {
   }
   printf("PASS preset plane (%s)\n", rsi.preset);
 
-  if (run_turn(handle, argv[3], "standard", "selfcheck-standard", 0) != 0) {
+  char standard_id[64];
+  char rsi_id[64];
+  char cancel_id[64];
+#ifdef _WIN32
+  snprintf(standard_id, sizeof(standard_id), "selfcheck-standard-%lu", (unsigned long)GetCurrentProcessId());
+  snprintf(rsi_id, sizeof(rsi_id), "selfcheck-rsi-%lu", (unsigned long)GetCurrentProcessId());
+  snprintf(cancel_id, sizeof(cancel_id), "selfcheck-cancel-%lu", (unsigned long)GetCurrentProcessId());
+#else
+  snprintf(standard_id, sizeof(standard_id), "selfcheck-standard-%ld", (long)getpid());
+  snprintf(rsi_id, sizeof(rsi_id), "selfcheck-rsi-%ld", (long)getpid());
+  snprintf(cancel_id, sizeof(cancel_id), "selfcheck-cancel-%ld", (long)getpid());
+#endif
+
+  if (run_turn(handle, prompt, "standard", standard_id, 0) != 0) {
     bole_release(handle);
     return 1;
   }
@@ -194,7 +224,7 @@ int main(int argc, char** argv) {
   }
   printf("PASS standard tool turn\n");
 
-  if (run_turn(handle, argv[3], "rsi-infer", "selfcheck-rsi", 0) != 0) {
+  if (run_turn(handle, prompt, "rsi-infer", rsi_id, 0) != 0) {
     bole_release(handle);
     return 1;
   }
@@ -207,16 +237,16 @@ int main(int argc, char** argv) {
   }
   printf("PASS rsi-infer receipt\n");
 
-  if (run_turn(handle, argv[3], "standard", "selfcheck-cancel", 1) != 0) {
+  if (run_turn(handle, prompt, "standard", cancel_id, 1) != 0) {
     bole_release(handle);
     return 1;
   }
   printf("PASS cancel aborted turn\n");
 
   char trace[1024];
-  snprintf(trace, sizeof(trace), "%s/selfcheck-trace.jsonl", argv[2]);
+  snprintf(trace, sizeof(trace), "%s/selfcheck-trace.jsonl", home);
   uint32_t count = 0;
-  rc = bole_trace_export(handle, "selfcheck-standard", 0, trace, &count);
+  rc = bole_trace_export(handle, standard_id, 0, trace, &count);
   if (rc != 0 || count == 0) {
     print_error(handle, "trace_export", rc);
     bole_release(handle);
@@ -237,5 +267,12 @@ int main(int argc, char** argv) {
     return 1;
   }
   printf("PASS selfcheck\n");
+#ifdef _WIN32
+  if (argc == 1 && getenv("BOLE_NO_PAUSE") == NULL) {
+    printf("\nPress Enter to close...");
+    fflush(stdout);
+    (void)getchar();
+  }
+#endif
   return 0;
 }

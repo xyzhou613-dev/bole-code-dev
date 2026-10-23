@@ -3,9 +3,20 @@
 30 行核心调用：`bole_init → bole_wait_ready → bole_session_create → bole_submit → 事件回调 → bole_release`。
 不依赖第三方工具；配合 `examples/toy-mcp` 完成一次 MCP 工具调用。
 
-```bash
-bole_console <runtime_dir> <dsh_home> "算一下 2+2"
+包内双击或直接运行（自动从 exe 位置推导 runtime/home）：
+
+```powershell
+.\bole_console.exe "算一下 2+2"
 ```
+
+也可以覆盖：
+
+```powershell
+.\bole_console.exe <runtime_dir> <dsh_home> "算一下 2+2"
+```
+
+不带参数时会使用默认 prompt；从资源管理器双击时窗口会停在
+`Press Enter to close...`（`BOLE_NO_PAUSE=1` 可关闭）。
 
 事件按 `bole_event.type` 分支打印；真实集成里应把 `TEXT_DELTA` 追加到 UI，`TASK_FINISHED/FAILED` 结束一轮。
 
@@ -39,10 +50,10 @@ PASS console-c C2/M0 tool call
 
 ## B8 自检
 
-包内 `bole_selfcheck.exe` 用当前 runtime/home 跑一次 ABI 自检：
+包内 `bole_selfcheck.exe` 自动推导 runtime/home，跑一次 ABI 自检：
 
 ```powershell
-.\bole_selfcheck.exe <runtime_dir> <dsh_home> "用玩具工具计算 1+2"
+.\bole_selfcheck.exe "用玩具工具计算 1+2"
 ```
 
 检查项：runtime ready、preset registry、standard 工具调用完成、rsi-infer 收据、

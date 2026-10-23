@@ -1,5 +1,6 @@
 /* Bole SDK console example: one tool call, end to end.
- * Usage: console <runtime_dir> <dsh_home> "prompt"                       */
+ * Usage: console [prompt]
+ *        console <runtime_dir> <dsh_home> "prompt"  (legacy override)   */
 #include <stdio.h>
 #include <string.h>
 #ifdef _WIN32
@@ -8,6 +9,7 @@
 #include <unistd.h>
 #endif
 #include "bole_agent.h"
+#include "example_paths.h"
 
 static volatile int g_done = 0;
 static volatile int g_failed = 0;
@@ -35,12 +37,30 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 4) { fprintf(stderr, "usage: %s <runtime_dir> <dsh_home> <prompt>\n", argv[0]); return 2; }
+  char runtime[BOLE_EXAMPLE_PATH_CAP];
+  char home[BOLE_EXAMPLE_PATH_CAP];
+  const char* prompt = BOLE_EXAMPLE_DEFAULT_PROMPT;
+
+  if (argc >= 4) {
+    snprintf(runtime, sizeof(runtime), "%s", argv[1]);
+    snprintf(home, sizeof(home), "%s", argv[2]);
+    prompt = argv[3];
+  } else if (argc == 3) {
+    snprintf(runtime, sizeof(runtime), "%s", argv[1]);
+    snprintf(home, sizeof(home), "%s", argv[2]);
+  } else {
+    if (bole_example_resolve(runtime, sizeof(runtime), home, sizeof(home)) != 0) {
+      fprintf(stderr, "cannot find runtime/home; pass <runtime_dir> <dsh_home> <prompt> or run from the package\n");
+      return 2;
+    }
+    if (argc == 2) prompt = argv[1];
+  }
+
   bole_config config;
   memset(&config, 0, sizeof(config));
   config.size = sizeof(config);
-  config.runtime_dir = argv[1];
-  config.dsh_home = argv[2];
+  config.runtime_dir = runtime;
+  config.dsh_home = home;
   config.model_provider = "bole";
   config.model_name = "qwen3.8-27b";
   config.event_cb = on_event;
@@ -49,9 +69,15 @@ int main(int argc, char** argv) {
   if (bole_init(&config, &handle) != 0) { fprintf(stderr, "init failed\n"); return 1; }
   if (bole_wait_ready(handle, 30000) != 0) { fprintf(stderr, "runtime not ready\n"); bole_release(handle); return 1; }
 
+  char session_id[64];
+#ifdef _WIN32
+  snprintf(session_id, sizeof(session_id), "console-%lu", (unsigned long)GetCurrentProcessId());
+#else
+  snprintf(session_id, sizeof(session_id), "console-%ld", (long)getpid());
+#endif
   bole_session* session = NULL;
-  if (bole_session_create(handle, "console-1", NULL, &session) != 0) { fprintf(stderr, "create failed\n"); bole_release(handle); return 1; }
-  if (bole_submit(session, argv[3]) != 0) { fprintf(stderr, "submit failed\n"); bole_release(handle); return 1; }
+  if (bole_session_create(handle, session_id, NULL, &session) != 0) { fprintf(stderr, "create failed\n"); bole_release(handle); return 1; }
+  if (bole_submit(session, prompt) != 0) { fprintf(stderr, "submit failed\n"); bole_release(handle); return 1; }
 
   /* The callback sets g_done on TASK_FINISHED/TASK_FAILED; 60 s bound. */
   for (int i = 0; i < 600 && !g_done; i++) {
@@ -63,5 +89,12 @@ int main(int argc, char** argv) {
   }
   if (!g_done) { fprintf(stderr, "timeout waiting for the task\n"); }
   bole_release(handle);
+#ifdef _WIN32
+  if (argc == 1 && getenv("BOLE_NO_PAUSE") == NULL) {
+    printf("\nPress Enter to close...");
+    fflush(stdout);
+    (void)getchar();
+  }
+#endif
   return g_done && !g_failed ? 0 : 1;
 }
