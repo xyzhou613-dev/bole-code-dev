@@ -55,14 +55,14 @@
 | 最简单工具调用 <1 分钟 | 完成 | 真实网关 console 工具调用；selfcheck < 60s 门限 |
 | 界面五项元素 | 完成 | 输入/提交/状态/结果/取消 |
 | 示例源码随包 | 完成 | build-offline 复制 `examples/console-c`、`gui-win32` |
-| 长任务不卡 | 代码完成，人工验收待测试 | SDK 在 worker；GUI 启动/多轮/日志已自动化；真实长任务 + Cancel 的交互录屏由测试补 |
+| 长任务不卡 | 完成（本机） | 真实网关让模型调用 `mcp__toy__sleep(5000)`；睡眠期间 `Responding=True`，点 Cancel 后 `finished (aborted)`，进程存活；截图 `gui-long-running` / `gui-long-cancelled` 已生成。干净 VM 由测试复跑录屏。 |
 
 ### 8 验收标准
 
 | # | 验收 | 状态 | 说明 |
 | --- | --- | --- | --- |
 | 1 | 无外网无开发环境目标机跑通 <1 分钟 | 待测试团队 | 开发机 + 真实网关等价通过；clean VM 由测试执行 |
-| 2 | 任务期间界面可交互、取消生效 | 部分待人工 | SDK cancel/selfcheck 通过；GUI 长任务交互录屏待测试 |
+| 2 | 任务期间界面可交互、取消生效 | 完成（本机） | 真实网关 sleep 5s 期间 GUI `Responding=True`；Cancel 后 `finished (aborted)`；干净 VM 录屏由测试复跑 |
 | 3 | RSI 开关生效、状态可观测 | 完成 | 真实 qwen；`available`/`bundleId=qwen38-service-v3`；standard 无 receipt |
 | 4 | 按文档独立集成可复现 | 待测试团队 | 四份文档已齐；最终 zip 内核对 + 伙伴/测试独立集成 |
 | 5 | 事件序列与 harness 一致、无伪造 | 完成（验证阶段除外） | fixtures + 真实运行；verify 明确不伪造 |
@@ -72,6 +72,8 @@
 - A 侧：vitest 31；fixtures 12 全过；session 6；trace 4；e2e 4（含杀 MCP）；check-config 15。
 - C 侧：Linux ctest 4/4；MSVC ctest 4/4（json/error/platform/fixtures）；MinGW ctest 4/4。
 - Windows：真实网关 console C2、B8 selfcheck 全 PASS、GUI 两轮追加 + RSI 复选框。
+- GUI 长任务：真实网关 `mcp__toy__sleep(5000)` 期间 `Responding=True`，Cancel 后
+  `finished (aborted)`，进程存活；截图在交付证据目录。
 - 抓包：qwen 请求体确认 `chat_template_kwargs.enable_thinking=false`，reasoning 为空。
 - 开发机一键 acceptance：install→verify→console→selfcheck→GUI→cleanup 全 PASS。
 
@@ -79,18 +81,17 @@
 
 1. **干净目标 VM**：测试团队执行；用 `packaging/acceptance.ps1`，不跳过 clean-environment 检查。
 2. **Windows 10 x64**：目前只在 Win11 开发机跑过；目标含 Win10 时补一台。
-3. **GUI 长任务 + 取消**：需要真实长任务、录屏/截图，证明界面不卡、取消后 aborted。
-4. **真实 Ornith 网关**：qwen 已验；Ornith 允许列表/经验包需实际网关复跑（任务不强制，但计划里列了）。
-5. **最终包**：r5 是旧包，r6 候选早于最新 toy/acceptance 改动；需要按 `11-packaging-runbook.md` 重打，包含 12 个 toy 工具、acceptance、no-thinking、UTF-8/RSI/GUI。
-6. **签名/EDR**：未签名交付；目标机安全策略由测试记录。
-7. **独立集成复现**：伙伴/测试按四份 delivery 文档从零集成一次。
+3. **真实 Ornith 网关**：qwen 已验；Ornith 允许列表/经验包需实际网关复跑（任务不强制，但计划里列了）。
+4. **最终包**：r5 是旧包，r6 候选早于最新 toy/acceptance 改动；需要按 `11-packaging-runbook.md` 重打，包含 12 个 toy 工具、acceptance、no-thinking、UTF-8/RSI/GUI。
+5. **签名/EDR**：未签名交付；目标机安全策略由测试记录。
+6. **独立集成复现**：伙伴/测试按四份 delivery 文档从零集成一次。
 
 ## 五、结论与建议
 
-实现层面已经具备交付条件；**最终 zip 未生成**，且验收第 1/2/4 条依赖测试团队的目标机与独立集成。建议：
+实现层面已经具备交付条件；**最终 zip 未生成**。第 1/2/4 条的目标机与独立集成复现仍由测试团队在干净 VM 完成（GUI 长任务/取消已在开发机通过，测试复跑留证）。建议：
 
 1. 先按 `11-packaging-runbook.md` 打一个 r6；
-2. 测试团队跑 `acceptance.ps1` + GUI 长任务/取消 + Win10（如适用）；
+2. 测试团队跑 `acceptance.ps1` + GUI 长任务/取消 + 独立集成 + Win10（如适用）；
 3. 通过后再决定交付 tag 和正式发布。
 
 验证阶段（`VERIFY_CHECK`）和运行时 MCP 注册是既定范围限制，不应在验收时被误判为 bug；若客户要求，需另立需求。
@@ -110,7 +111,6 @@
 仍未由我方完成、需测试/负责人确认：
 
 - 四份 delivery 文档在**最终 zip 内的路径与独立集成复现**；
-- GUI 长任务 + Cancel 的人工录屏；
 - Windows 10、Ornith、真实 EDR/签名策略；
 - 最终 r6 重打与测试团队 clean VM 验收。
 

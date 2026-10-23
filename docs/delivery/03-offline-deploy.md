@@ -44,6 +44,8 @@ bole-agent-sdk-<版本>-win-x64/
 - 模型网关地址在 `runtime/cordis.patch.yml`（C 的 `--patch` 是最高层）；安装时用 `install.ps1 -ModelGateway http://<gateway>:<port>` 改写。
 - `bin/`：SDK 动态库和头文件，供伙伴程序链接/加载。
 - `samples/`、`tools/`、`docs/`：示例、验收工具和文档。
+- MCP server 只支持在 `home/cordis.patch.yml` 声明并重启生效；SDK 不提供运行时注册。
+- 本版本不产生 `VERIFY_CHECK`(40)；任务终态以 `TASK_FINISHED` / `TASK_FAILED` 为准。
 
 ## 2. 安装与卸载
 
