@@ -18,11 +18,13 @@
 #    define WIN32_LEAN_AND_MEAN
 #  endif
 #  include <windows.h>
+#  include <shellapi.h>
 #else
 #  include <limits.h>
 #  include <sys/stat.h>
 #  include <unistd.h>
 #endif
+
 
 #define BOLE_EXAMPLE_PATH_CAP 4096
 #define BOLE_EXAMPLE_DEFAULT_PROMPT \
@@ -39,6 +41,34 @@ static char* bole_example_utf8(const wchar_t* text) {
     return NULL;
   }
   return result;
+}
+
+/** Convert GetCommandLineW to UTF-8 argv (Windows CRT argv uses the ANSI code page). */
+static char** bole_example_utf8_argv(int* argc_out) {
+  int wide_count = 0;
+  wchar_t** wide = CommandLineToArgvW(GetCommandLineW(), &wide_count);
+  if (wide == NULL) return NULL;
+  char** argv = (char**)calloc((size_t)wide_count + 1, sizeof(char*));
+  if (argv == NULL) { LocalFree(wide); return NULL; }
+  for (int i = 0; i < wide_count; i++) {
+    argv[i] = bole_example_utf8(wide[i]);
+    if (argv[i] == NULL) {
+      for (int j = 0; j < i; j++) free(argv[j]);
+      free(argv);
+      LocalFree(wide);
+      return NULL;
+    }
+  }
+  argv[wide_count] = NULL;
+  LocalFree(wide);
+  if (argc_out != NULL) *argc_out = wide_count;
+  return argv;
+}
+
+static void bole_example_free_argv(char** argv, int argc) {
+  if (argv == NULL) return;
+  for (int i = 0; i < argc; i++) free(argv[i]);
+  free(argv);
 }
 
 static wchar_t* bole_example_wide(const char* text) {

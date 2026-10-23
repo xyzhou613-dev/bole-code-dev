@@ -146,7 +146,7 @@ static int run_turn(bole_handle* handle, const char* prompt, const char* preset,
   return 0;
 }
 
-int main(int argc, char** argv) {
+static int run_example(int argc, char** argv) {
   char runtime[BOLE_EXAMPLE_PATH_CAP];
   char home[BOLE_EXAMPLE_PATH_CAP];
   const char* prompt = BOLE_EXAMPLE_DEFAULT_PROMPT;
@@ -235,7 +235,7 @@ int main(int argc, char** argv) {
     bole_release(handle);
     return 1;
   }
-  printf("PASS rsi-infer receipt\n");
+  printf("PASS rsi-infer receipt (%s)\n", g.rsi_payload);
 
   if (run_turn(handle, prompt, "standard", cancel_id, 1) != 0) {
     bole_release(handle);
@@ -276,3 +276,23 @@ int main(int argc, char** argv) {
 #endif
   return 0;
 }
+
+#ifdef _WIN32
+int main(void) {
+  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleCP(CP_UTF8);
+  int argc = 0;
+  char** argv = bole_example_utf8_argv(&argc);
+  if (argv == NULL) {
+    fprintf(stderr, "cannot decode the command line\n");
+    return 2;
+  }
+  int result = run_example(argc, argv);
+  bole_example_free_argv(argv, argc);
+  return result;
+}
+#else
+int main(int argc, char** argv) {
+  return run_example(argc, argv);
+}
+#endif

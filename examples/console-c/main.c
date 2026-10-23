@@ -36,7 +36,7 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
   }
 }
 
-int main(int argc, char** argv) {
+static int run_example(int argc, char** argv) {
   char runtime[BOLE_EXAMPLE_PATH_CAP];
   char home[BOLE_EXAMPLE_PATH_CAP];
   const char* prompt = BOLE_EXAMPLE_DEFAULT_PROMPT;
@@ -125,3 +125,23 @@ int main(int argc, char** argv) {
 #endif
   return g_done && !g_failed ? 0 : 1;
 }
+
+#ifdef _WIN32
+int main(void) {
+  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleCP(CP_UTF8);
+  int argc = 0;
+  char** argv = bole_example_utf8_argv(&argc);
+  if (argv == NULL) {
+    fprintf(stderr, "cannot decode the command line\n");
+    return 2;
+  }
+  int result = run_example(argc, argv);
+  bole_example_free_argv(argv, argc);
+  return result;
+}
+#else
+int main(int argc, char** argv) {
+  return run_example(argc, argv);
+}
+#endif

@@ -178,9 +178,14 @@ static void append_result(HWND hwnd, const char* text) {
     g_log[used++] = '\n';
     g_log[used] = '\0';
   }
-  SetWindowTextA(hwnd, g_log);
-  SendMessageA(hwnd, EM_SETSEL, (WPARAM)strlen(g_log), (LPARAM)strlen(g_log));
-  SendMessageA(hwnd, EM_SCROLLCARET, 0, 0);
+  wchar_t* wide = utf8_to_wide(g_log);
+  if (wide != NULL) {
+    SetWindowTextW(hwnd, wide);
+    free(wide);
+  }
+  int wide_length = GetWindowTextLengthW(hwnd);
+  SendMessageW(hwnd, EM_SETSEL, (WPARAM)wide_length, (LPARAM)wide_length);
+  SendMessageW(hwnd, EM_SCROLLCARET, 0, 0);
 }
 
 static void BOLE_CALL on_event(void* user, const bole_event* event) {
@@ -278,14 +283,18 @@ static DWORD WINAPI worker(LPVOID param) {
     }
   }
 
-  char text[4096];
-  GetWindowTextA(g_input, text, sizeof(text));
-  if (text[0] == '\0') {
+  wchar_t wide_text[4096];
+  GetWindowTextW(g_input, wide_text, 4096);
+  char* text = wide_to_utf8(wide_text);
+  if (text == NULL || text[0] == '\0') {
+    free(text);
     post_text(hwnd, ID_STATUS, "empty input");
     InterlockedExchange(&g_running, 0);
     return 0;
   }
-  if (bole_submit(g_session, text) != 0) {
+  int submit_result = bole_submit(g_session, text);
+  free(text);
+  if (submit_result != 0) {
     post_text(hwnd, ID_STATUS, "submit failed");
     InterlockedExchange(&g_running, 0);
   }
