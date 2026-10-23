@@ -32,13 +32,12 @@ cd D:\bole-agent-sdk-win-x64
 
 .\install.ps1 `
   -Target D:\apps\BoleAgentSdk `
-  -ModelGateway <gateway>
+  -ModelGateway http://192.168.19.203:9001
 ```
 
 说明：
 
 - `-Target` 是 SDK 的安装目录，**不要填解压目录**；
-- `<gateway>` 由部署方提供，例如 `http://<网关地址>:8009`，不要带 `/v1`；
 - 不需要管理员权限，不会写注册表。
 
 成功会显示：
@@ -177,7 +176,97 @@ cd D:\apps\BoleAgentSdk\samples\console-c
 ![image-20261023153609783](assets/image-20261023153609783.png)
 
 > 新增其他 MCP 服务、安装外部 MCP 服务：见《MCP 工具接入与示例》
-> （`mcp-integration.md`）。
+> （`05-mcp-integration.md`）。
+
+## 第 7 章：RSI 使用说明
+
+### 开启后的效果
+
+开启 RSI 后，新建会话会加载对应模型的服务经验：
+
+- 普通问答：回答会参考该模型的经验，事件里会看到经验可用；
+- 服务生命周期类任务：会写入/投递经验，返回 `delivered`，并带上经验 ID；
+- 不开启：普通 `standard` 模式，不加载、不投递经验；
+- 模型不在经验列表：返回 `unsupported-model`，不会投递经验。
+
+RSI 只影响**新建会话**。已经开始的对话/任务不会中途切换；默认关闭。
+
+### 在界面中开启
+
+1. 启动 `bole_gui.exe`；
+2. 勾选 **RSI**；
+3. 再点 **Submit**。
+
+状态栏会显示类似：
+
+```text
+RSI on (first task)
+```
+
+之后这个会话的回答会使用经验。一个任务结束后再提交，GUI 可能新建会话，RSI 继续作为新会话的默认值。
+
+![RSI 勾选](assets/image-20261023112208664.png)
+
+### 在控制台中开启
+
+```powershell
+cd D:\apps\BoleAgentSdk\samples\console-c
+
+.\bole_console.exe --rsi "你好"
+```
+
+开启后会打印：
+
+```text
+RSI: on
+```
+
+关闭：
+
+```powershell
+.\bole_console.exe --rsi=off "你好"
+```
+
+不加参数就是默认的普通模式。
+
+### 在 C 代码中开启
+
+初始化时设置新会话默认值：
+
+```c
+bole_config cfg = {0};
+cfg.size = sizeof(cfg);
+cfg.rsi_enabled = 1;
+```
+
+运行时修改：
+
+```c
+bole_rsi_set(handle, 1);   /* 1=开启，0=关闭 */
+```
+
+指定某个空白会话：
+
+```c
+bole_session_set_preset(session, "rsi-infer");
+```
+
+### 生效范围
+
+| 操作 | 效果 |
+| --- | --- |
+| 新会话普通提问 | 回答参考经验，返回 `available` |
+| 新会话服务生命周期任务 | 经验投递，返回 `delivered` 和经验 ID |
+| 不开启 RSI | `standard`，没有经验投递 |
+| 模型不在允许列表 | `unsupported-model`，不投递 |
+| 任务开始后再切换 | 返回 `PRESET_LOCKED`（4003），本次任务不变 |
+
+### 注意
+
+- 在第一次 Submit 前决定是否开启；
+- 经验只对 `qwen3.8-27b` / `Ornith-1.5-35B-A3B` 生效；
+- RSI 与 MCP 工具互不影响，开不开 RSI 都可以调用 MCP 工具；
+- 控制台不打印经验收据，需要看效果时用 GUI 或 `bole_selfcheck.exe`。
 
 ## 常见问题
 
