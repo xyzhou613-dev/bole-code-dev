@@ -59,6 +59,7 @@
 | F10 | SDK 的 preset 面缺少 Web 的 `subagent-model-selection-settings` 宿主行时，`standard`/`rsi-infer` mount 报 `tool-subagent ... modelSelectionSettings requires ...` | A4 实测 | `sdk-app` 补丁必须插入该宿主行 |
 | F11 | C 启动的 `--patch` 是最高层，高于 home patch；把模型 `baseURL` 放 home 会被交付 patch 覆盖 | Windows 离线包 C2 实测：mock 0 调用 | 模型配置留在 `runtime/cordis.patch.yml`，由 build/install 的 `-ModelGateway` 改写；home patch 只放 MCP |
 | F12 | MSVC 默认中文代码页 936 无法编译 UTF-8 源，`test_json.c` 报 C4819/C2001 | MSVC BuildTools 2022 实测 | CMake 对 MSVC 加 `/utf-8` |
+| F13 | vLLM 的 Qwen 模板默认开 thinking；自定义 `models` 条目没有 `reasoningEfforts` 时 pi-ai 认为模型不推理，完全不发 `chat_template_kwargs`（只加 `compat` 无效） | 真实网关抓包：请求体没有 thinking 字段，模型仍返回 reasoning；补 `reasoningEfforts` + `thinkingFormat: chat-template` 后请求体出现 `chat_template_kwargs.enable_thinking:false`，reasoning 为空 | qwen 模型条目保留该 compat；换网关/模型要重新抓包确认 |
 
 ### 2.4 开发环境现状与选择
 

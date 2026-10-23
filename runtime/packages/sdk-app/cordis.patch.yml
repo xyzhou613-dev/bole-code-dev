@@ -119,6 +119,17 @@
         apiKeyEnv: BOLE_API_KEY
         models:
           - id: qwen3.8-27b
+            # vLLM's Qwen template enables thinking by default. Declaring a
+            # reasoning capability is required for pi-ai to evaluate compat;
+            # chat-template + the explicit false sends the same field as the
+            # gateway's documented curl.
+            reasoningEfforts:
+              off: null
+              high: high
+            compat:
+              thinkingFormat: chat-template
+              chatTemplateKwargs:
+                enable_thinking: false
 
 # No answerer exists in a headless runtime; `ask` would fail closed.
 - id: approval
