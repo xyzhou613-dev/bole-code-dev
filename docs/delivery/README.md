@@ -11,7 +11,7 @@
 | `03-offline-deploy.md` | 离线部署：目录、安装、版本、校验、自检、网络与安全、常见故障 | 客户现场运维 | 07 |
 | `04-error-codes.md` | 错误码：数值、常量、wire code、可重试、`last_error`、示例 | 伙伴开发者/排障 | 04 |
 | `05-mcp-integration.md` | MCP 接入与示例：自带 12 工具、外部 Everything Server 安装/配置/验证、新增 MCP 模板与截图位置 | 伙伴开发者/测试 | 01/03 |
-| `07-data-transfer.md` | SDK 可传输的数据：文字、base64 图片、图文混合 | 产品/客户/伙伴 | 01 |
+| `07-data-transfer.md` | 数据传输能力：文字/图片可传、文件不可传、模型视觉能力待验证 | 产品/客户/伙伴 | 01 |
 
 ## 写作规则
 
