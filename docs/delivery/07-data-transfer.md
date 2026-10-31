@@ -53,16 +53,25 @@ image/gif
 
 图片会进入运行时附件存储，再把引用交给模型。
 
-### 重要：传输支持 ≠ 模型支持
+### 重要：模型能看图，但要用“图片”而不是“base64 文本”
 
-当前包里的 `qwen3.8-27b` 配置只声明了文本/推理，没有声明视觉能力。  
-因此可能出现：
+根据阿里云 Model Studio 的模型说明，`qwen3.8-27b` 是原生视觉语言模型：
 
-- 模型能回答文字，但忽略图片；
-- 网关拒绝 image 请求；
-- 任务以 `TASK_FAILED` 结束。
+- 输入：Image / Text / Video
+- 输出：Text
+- 来源：<https://docs.modelstudio.console.alibabacloud.com/en/model-studio/qwen3-8-27b.md>
 
-必须在实际网关上用一张小图测一次，不能仅凭 SDK 能传图片就认为模型能看图。
+所以模型本身具备看图能力。但 base64 只是编码，不能把 base64 字符串当普通文字丢给模型；
+必须作为 image content block（OpenAI-compatible 接口里是 `image_url` 的 data URI）发送。
+
+当前 SDK 的 `bole_submit_blocks` 会生成 image block，路径是正确的。  
+仍需在实际网关上确认：
+
+- 网关是否接受 `data:image/...;base64,...` 形式；
+- 运行时模型配置是否允许图片输入；
+- 模型是否返回了正确的图片理解结果。
+
+当前环境访问不到实际网关，尚未完成端到端图片测试。
 
 ## 4. 文件
 
@@ -146,10 +155,16 @@ SDK runtime
 - 真实网关文本对话；
 - toy MCP 工具结果文本回传。
 
+官方资料确认：
+
+- `qwen3.8-27b` 是原生视觉语言模型，支持 Image/Text/Video 输入、Text 输出；
+- base64 需要作为 image block / data URI 发送，不能作为普通文字。
+
 未验证：
 
-- `qwen3.8-27b` 图片输入是否真正可用；
+- 实际网关是否接受 base64 data URI；
+- 当前运行时配置是否已打开图片输入；
 - PDF/Office 解析；
 - 图片/文件回传。
 
-图片能力需要在实际模型网关上补一次验证。
+图片能力需要在当前实际网关上补一次端到端验证。
