@@ -233,6 +233,8 @@ static void open_log_file(void) {
     free(wide);
   }
   if (g_log_file != NULL) {
+    static const unsigned char utf8_bom[] = { 0xEF, 0xBB, 0xBF };
+    fwrite(utf8_bom, 1, sizeof(utf8_bom), g_log_file);
     fprintf(g_log_file, "# Bole SDK GUI log\r\n");
     fprintf(g_log_file, "# pid=%lu\r\n# runtime=%s\r\n# home=%s\r\n",
             (unsigned long)GetCurrentProcessId(), g_runtime_dir, g_dsh_home);
@@ -468,7 +470,7 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
       char* answer = cap == 0 ? NULL : (char*)malloc(cap);
       if (answer != NULL && json_string_field(event->payload_json, "text", answer, cap)) {
         log_answer(answer);
-        post_log(hwnd, "[answer] ", answer);
+        if (answer[0] != '\0') post_log(hwnd, "[answer] ", answer);
       }
       free(answer);
       break;
