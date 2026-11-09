@@ -18,6 +18,7 @@ param(
   [string]$PluginTarball = "",                          # default: newest runtime\dist\bole-sdk-server-*.tgz
   [string]$ExperienceTarball = "",                      # default: newest runtime\dist\*skill-bole-experience*.tgz
   [string]$ModelGateway = "http://192.168.19.203:9001", # deployment gateway, no /v1 suffix
+  [string]$ModelName = "",                              # optional model id; default stays qwen3.8-27b
   [string]$ConsoleExe = "",                             # optional prebuilt bole_console.exe
   [string]$GuiExe = ""                                  # optional prebuilt bole_gui.exe
 )
@@ -86,6 +87,10 @@ Copy-Item (Join-Path $repo "runtime\config\*") (Join-Path $root "runtime\config"
 $runtimePatch = Join-Path $root "runtime\cordis.patch.yml"
 $patchText = Get-Content $runtimePatch -Raw
 $patchText = [regex]::Replace($patchText, "baseURL:\s*\S+", "baseURL: '$($ModelGateway.TrimEnd('/'))/v1'")
+if ($ModelName -ne "") {
+  $patchText = $patchText.Replace("model: qwen3.8-27b", "model: $ModelName")
+  $patchText = $patchText.Replace("- id: qwen3.8-27b", "- id: $ModelName")
+}
 Write-Utf8NoBom $runtimePatch $patchText
 
 # --- 3. Custom packages in the SDK profile ---------------------------------
