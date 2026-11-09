@@ -413,6 +413,7 @@ static void log_task_start(void) {
                   (unsigned)now.wDay, (unsigned)now.wHour,
                   (unsigned)now.wMinute, (unsigned)now.wSecond);
   log_file_printf("用户：\r\n%s\r\n", g_pending_prompt[0] != '\0' ? g_pending_prompt : "(空)");
+  log_file_printf("RSI：%s\r\n", InterlockedCompareExchange(&g_rsi_enabled, 0, 0) ? "on" : "off");
 }
 
 static void log_tool_start(const char* payload) {
@@ -449,6 +450,19 @@ static void log_reasoning(const char* text) {
   }
   log_file_printf("%s\r\n", text);
 }
+
+static void log_rsi_state(const char* payload) {
+  char status[64];
+  char bundle[160];
+  if (g_log_file == NULL || payload == NULL || strstr(payload, "\"delivery\"") == NULL) return;
+  if (!json_string_field(payload, "status", status, sizeof(status)) || status[0] == '\0') return;
+  if (json_string_field(payload, "bundleId", bundle, sizeof(bundle))) {
+    log_file_printf("经验：%s  bundle=%s\r\n", status, bundle);
+  } else {
+    log_file_printf("经验：%s\r\n", status);
+  }
+}
+
 
 static void log_answer(const char* text) {
   if (g_log_file == NULL || text == NULL || text[0] == '\0') return;
@@ -495,6 +509,9 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
   log_raw_event(event);
   switch (event->type) {
     case BOLE_EVENT_RUNTIME_READY: post_text(hwnd, ID_STATUS, "runtime ready"); break;
+    case BOLE_EVENT_RSI_STATE:
+      log_rsi_state(event->payload_json);
+      break;
     case BOLE_EVENT_TASK_STARTED:
       log_task_start();
       g_log[0] = '\0';
@@ -630,6 +647,9 @@ static DWORD WINAPI worker(LPVOID param) {
       post_text(hwnd, ID_STATUS, "session create failed");
       InterlockedExchange(&g_running, 0);
       return 0;
+    }
+    if (InterlockedCompareExchange(&g_rsi_enabled, 0, 0)) {
+      (void)bole_session_set_preset(g_session, "rsi-infer");
     }
   }
 
