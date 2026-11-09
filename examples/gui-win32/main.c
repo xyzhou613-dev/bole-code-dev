@@ -168,9 +168,19 @@ static void post_text(HWND hwnd, int control, const char* text) {
 
 static void append_result(HWND hwnd, const char* text) {
   size_t used = strlen(g_log);
+  size_t length = text == NULL ? 0 : strlen(text);
+  /* Keep the newest part instead of silently dropping new events. */
+  if (used + length + 2 >= sizeof(g_log)) {
+    size_t keep = sizeof(g_log) / 2;
+    size_t drop = used > keep ? used - keep : 0;
+    if (drop > 0) {
+      memmove(g_log, g_log + drop, used - drop);
+      used -= drop;
+      g_log[used] = '\0';
+    }
+  }
   size_t room = sizeof(g_log) - used - 1;
-  if (room > 0 && text != NULL) {
-    size_t length = strlen(text);
+  if (room > 2 && length > 0) {
     if (length > room - 2) length = room - 2;
     memcpy(g_log + used, text, length);
     used += length;
@@ -188,34 +198,136 @@ static void append_result(HWND hwnd, const char* text) {
   SendMessageW(hwnd, EM_SCROLLCARET, 0, 0);
 }
 
+static int json_string_field(const char* json, const char* key, char* out, size_t capacity) {
+  char pattern[64];
+  const char* p;
+  size_t n = 0;
+  if (json == NULL || key == NULL || out == NULL || capacity == 0) return 0;
+  snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+  p = strstr(json, pattern);
+  if (p == NULL) return 0;
+  p += strlen(pattern);
+  while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+  if (*p != ':') return 0;
+  p++;
+  while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+  if (*p != '"') return 0;
+  p++;
+  while (*p != '\0' && *p != '"') {
+    unsigned char c = (unsigned char)*p++;
+    if (c == '\\') {
+      if (*p == '\0') break;
+      c = (unsigned char)*p++;
+      switch (c) {
+        case 'n': c = '\n'; break;
+        case 'r': c = '\r'; break;
+        case 't': c = '\t'; break;
+        case '"': c = '"'; break;
+        case '\\': c = '\\'; break;
+        case '/': c = '/'; break;
+        case 'u': {
+          /* Keep non-ASCII text readable enough for a demo log. */
+          unsigned value = 0;
+          int i;
+          for (i = 0; i < 4 && *p != '\0'; i++) {
+            char h = *p++;
+            value <<= 4;
+            if (h >= '0' && h <= '9') value |= (unsigned)(h - '0');
+            else if (h >= 'a' && h <= 'f') value |= (unsigned)(h - 'a' + 10);
+            else if (h >= 'A' && h <= 'F') value |= (unsigned)(h - 'A' + 10);
+          }
+          c = value < 0x80 ? (unsigned char)value : '?';
+          break;
+        }
+        default: break;
+      }
+    }
+    if (n + 1 < capacity) out[n++] = (char)c;
+  }
+  out[n] = '\0';
+  return 1;
+}
+
+static void post_log(HWND hwnd, const char* prefix, const char* value) {
+  size_t size;
+  char* line;
+  if (value == NULL) return;
+  size = strlen(prefix) + strlen(value) + 2;
+  line = (char*)malloc(size);
+  if (line == NULL) return;
+  snprintf(line, size, "%s%s", prefix, value);
+  post_text(hwnd, ID_RESULT, line);
+  free(line);
+}
+
 static void BOLE_CALL on_event(void* user, const bole_event* event) {
   HWND hwnd = (HWND)user;
+  char tool[160];
+  char result[512];
+  char message[512];
+  char line[1024];
+
   switch (event->type) {
     case BOLE_EVENT_RUNTIME_READY: post_text(hwnd, ID_STATUS, "runtime ready"); break;
     case BOLE_EVENT_TASK_STARTED:
+      g_log[0] = '\0';
+      SetWindowTextW(g_result, L"");
       InterlockedExchange(&g_has_turn, 1);
       post_text(hwnd, ID_STATUS, "task started");
+      post_text(hwnd, ID_RESULT, "[task] started");
       break;
-    case BOLE_EVENT_TOOL_CALL_STARTED: post_text(hwnd, ID_STATUS, "tool running"); break;
-    case BOLE_EVENT_TOOL_CALL_FINISHED: post_text(hwnd, ID_STATUS, "tool done"); break;
+    case BOLE_EVENT_TOOL_CALL_STARTED:
+      post_text(hwnd, ID_STATUS, "tool running");
+      if (json_string_field(event->payload_json, "tool", tool, sizeof(tool))) {
+        post_log(hwnd, "[tool] ", tool);
+      }
+      break;
+    case BOLE_EVENT_TOOL_CALL_FINISHED:
+      post_text(hwnd, ID_STATUS, "tool done");
+      if (json_string_field(event->payload_json, "tool", tool, sizeof(tool))) {
+        if (json_string_field(event->payload_json, "resultSummary", result, sizeof(result))) {
+          snprintf(line, sizeof(line), "[tool] %s -> %.300s", tool, result);
+        } else {
+          snprintf(line, sizeof(line), "[tool] %s -> done", tool);
+        }
+        post_text(hwnd, ID_RESULT, line);
+      }
+      break;
     case BOLE_EVENT_TEXT_DELTA:
-    case BOLE_EVENT_ASSISTANT_MESSAGE:
-      post_text(hwnd, ID_RESULT, event->payload_json); break;
+      /* Deltas are intentionally not rendered as raw JSON; the final message is shown. */
+      break;
+    case BOLE_EVENT_ASSISTANT_MESSAGE: {
+      size_t cap = event->payload_json == NULL ? 0 : strlen(event->payload_json) + 1;
+      char* answer = cap == 0 ? NULL : (char*)malloc(cap);
+      if (answer != NULL && json_string_field(event->payload_json, "text", answer, cap)) {
+        post_log(hwnd, "[answer] ", answer);
+      }
+      free(answer);
+      break;
+    }
     case BOLE_EVENT_TASK_FINISHED:
       if (event->payload_json != NULL && strstr(event->payload_json, "aborted") != NULL) {
         post_text(hwnd, ID_STATUS, "finished (aborted)");
+        post_text(hwnd, ID_RESULT, "[task] finished (aborted)");
       } else {
         post_text(hwnd, ID_STATUS, "finished");
+        post_text(hwnd, ID_RESULT, "[task] finished");
       }
       InterlockedExchange(&g_running, 0);
       break;
     case BOLE_EVENT_TASK_FAILED:
       post_text(hwnd, ID_STATUS, "failed");
+      if (json_string_field(event->payload_json, "message", message, sizeof(message))) {
+        post_log(hwnd, "[task] failed: ", message);
+      } else {
+        post_text(hwnd, ID_RESULT, "[task] failed");
+      }
       InterlockedExchange(&g_running, 0);
       break;
     case BOLE_EVENT_RUNTIME_FAILED:
     case BOLE_EVENT_RUNTIME_EXITED:
       post_text(hwnd, ID_STATUS, "runtime stopped");
+      post_text(hwnd, ID_RESULT, "[runtime] stopped");
       InterlockedExchange(&g_running, 0);
       break;
     default: break;
@@ -341,6 +453,8 @@ static void on_command(HWND hwnd, int id) {
       CloseHandle(g_worker);
       g_worker = NULL;
     }
+    g_log[0] = '\0';
+    SetWindowTextW(g_result, L"");
     SetWindowTextA(g_status, "starting");
     g_worker = CreateThread(NULL, 0, worker, hwnd, 0, NULL);
     if (g_worker == NULL) {
