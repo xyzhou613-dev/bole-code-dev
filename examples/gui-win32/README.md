@@ -48,7 +48,12 @@ $env:BOLE_DSH_HOME = "<package>\home"
   <dsh_home>\logs\gui-YYYYMMDD-HHMMSS-<pid>.log
   ```
   按任务分组，包含用户输入、工具调用/结果、最终回答、状态和耗时；
-- 界面上的 **Open Log** 按钮直接打开当前日志文件；
+- 原始事件另写一份：
+  ```text
+  <dsh_home>\logs\gui-YYYYMMDD-HHMMSS-<pid>.jsonl
+  ```
+  一行一个事件，包含 `time`、`type`、`name`、`payload`，保留 reasoning、delta 和工具原始结果；
+- 界面上的 **Open Log** 按钮直接打开当前可读日志文件；
 - Cancel 调用 `bole_cancel`，终态由 SDK 决定；
 - 窗口关闭时取消活动任务、等待工作线程最多 5 秒，再释放 handle。
 

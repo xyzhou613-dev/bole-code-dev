@@ -37,10 +37,13 @@ static char g_path_error[512];
 static char g_session_id[64];
 static char g_log[256 * 1024];
 static char g_log_path[PATH_CAP];
+static char g_raw_path[PATH_CAP];
 static FILE* g_log_file;
+static FILE* g_raw_file;
 static unsigned g_turn_no;
 static ULONGLONG g_task_tick;
 static int g_answer_started;
+static int g_reasoning_started;
 static char g_pending_prompt[4096];
 
 static void open_log_file(void);
@@ -227,9 +230,19 @@ static void open_log_file(void) {
            dir, (unsigned)now.wYear, (unsigned)now.wMonth, (unsigned)now.wDay,
            (unsigned)now.wHour, (unsigned)now.wMinute, (unsigned)now.wSecond,
            (unsigned long)GetCurrentProcessId());
+  snprintf(g_raw_path, sizeof(g_raw_path),
+           "%s\\gui-%04u%02u%02u-%02u%02u%02u-%lu.jsonl",
+           dir, (unsigned)now.wYear, (unsigned)now.wMonth, (unsigned)now.wDay,
+           (unsigned)now.wHour, (unsigned)now.wMinute, (unsigned)now.wSecond,
+           (unsigned long)GetCurrentProcessId());
   wide = utf8_to_wide(g_log_path);
   if (wide != NULL) {
     g_log_file = _wfopen(wide, L"ab");
+    free(wide);
+  }
+  wide = utf8_to_wide(g_raw_path);
+  if (wide != NULL) {
+    g_raw_file = _wfopen(wide, L"ab");
     free(wide);
   }
   if (g_log_file != NULL) {
@@ -251,6 +264,42 @@ static void log_file_printf(const char* format, ...) {
   fflush(g_log_file);
 }
 
+
+static const char* event_type_name(int type) {
+  switch (type) {
+    case BOLE_EVENT_RUNTIME_READY: return "RUNTIME_READY";
+    case BOLE_EVENT_RUNTIME_FAILED: return "RUNTIME_FAILED";
+    case BOLE_EVENT_RUNTIME_EXITED: return "RUNTIME_EXITED";
+    case BOLE_EVENT_TASK_STARTED: return "TASK_STARTED";
+    case BOLE_EVENT_STEP_STARTED: return "STEP_STARTED";
+    case BOLE_EVENT_STEP_FINISHED: return "STEP_FINISHED";
+    case BOLE_EVENT_PLAN_UPDATED: return "PLAN_UPDATED";
+    case BOLE_EVENT_MODEL_SELECTED: return "MODEL_SELECTED";
+    case BOLE_EVENT_RSI_STATE: return "RSI_STATE";
+    case BOLE_EVENT_TEXT_DELTA: return "TEXT_DELTA";
+    case BOLE_EVENT_REASONING_DELTA: return "REASONING_DELTA";
+    case BOLE_EVENT_ASSISTANT_MESSAGE: return "ASSISTANT_MESSAGE";
+    case BOLE_EVENT_TOOL_CALL_STARTED: return "TOOL_CALL_STARTED";
+    case BOLE_EVENT_TOOL_CALL_FINISHED: return "TOOL_CALL_FINISHED";
+    case BOLE_EVENT_VERIFY_CHECK: return "VERIFY_CHECK";
+    case BOLE_EVENT_TASK_FINISHED: return "TASK_FINISHED";
+    case BOLE_EVENT_TASK_FAILED: return "TASK_FAILED";
+    default: return "UNKNOWN";
+  }
+}
+
+static void log_raw_event(const bole_event* event) {
+  SYSTEMTIME now;
+  if (g_raw_file == NULL || event == NULL) return;
+  GetLocalTime(&now);
+  fprintf(g_raw_file,
+          "{\"time\":\"%04u-%02u-%02uT%02u:%02u:%02u\",\"type\":%d,\"name\":\"%s\",\"payload\":%s}\n",
+          (unsigned)now.wYear, (unsigned)now.wMonth, (unsigned)now.wDay,
+          (unsigned)now.wHour, (unsigned)now.wMinute, (unsigned)now.wSecond,
+          (int)event->type, event_type_name((int)event->type),
+          event->payload_json != NULL ? event->payload_json : "null");
+  fflush(g_raw_file);
+}
 
 static int json_string_field(const char* json, const char* key, char* out, size_t capacity) {
   char pattern[64];
@@ -357,6 +406,7 @@ static void log_task_start(void) {
   g_turn_no++;
   g_task_tick = GetTickCount64();
   g_answer_started = 0;
+  g_reasoning_started = 0;
   log_file_printf("\r\n============================================================\r\n");
   log_file_printf("任务 #%u  %04u-%02u-%02u %02u:%02u:%02u\r\n",
                   g_turn_no, (unsigned)now.wYear, (unsigned)now.wMonth,
@@ -389,6 +439,15 @@ static void log_tool_done(const char* payload) {
   } else {
     log_file_printf("结果：%s 已完成\r\n", tool);
   }
+}
+
+static void log_reasoning(const char* text) {
+  if (g_log_file == NULL || text == NULL || text[0] == '\0') return;
+  if (!g_reasoning_started) {
+    log_file_printf("\r\n思考：\r\n");
+    g_reasoning_started = 1;
+  }
+  log_file_printf("%s\r\n", text);
 }
 
 static void log_answer(const char* text) {
@@ -433,6 +492,7 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
   char message[512];
   char line[1024];
 
+  log_raw_event(event);
   switch (event->type) {
     case BOLE_EVENT_RUNTIME_READY: post_text(hwnd, ID_STATUS, "runtime ready"); break;
     case BOLE_EVENT_TASK_STARTED:
@@ -468,10 +528,15 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
     case BOLE_EVENT_ASSISTANT_MESSAGE: {
       size_t cap = event->payload_json == NULL ? 0 : strlen(event->payload_json) + 1;
       char* answer = cap == 0 ? NULL : (char*)malloc(cap);
+      char* reasoning = cap == 0 ? NULL : (char*)malloc(cap);
+      if (reasoning != NULL && json_string_field(event->payload_json, "reasoning", reasoning, cap)) {
+        log_reasoning(reasoning);
+      }
       if (answer != NULL && json_string_field(event->payload_json, "text", answer, cap)) {
         log_answer(answer);
         if (answer[0] != '\0') post_log(hwnd, "[answer] ", answer);
       }
+      free(reasoning);
       free(answer);
       break;
     }
@@ -702,6 +767,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
       if (g_log_file != NULL) {
         fclose(g_log_file);
         g_log_file = NULL;
+      }
+      if (g_raw_file != NULL) {
+        fclose(g_raw_file);
+        g_raw_file = NULL;
       }
       PostQuitMessage(0);
       return 0;
