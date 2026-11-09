@@ -36,6 +36,7 @@ $env:BOLE_DSH_HOME = "<package>\home"
 
 ## 行为
 
+- 模型默认取 `runtime/cordis.patch.yml` 的 `agent-default-model`；C 配置里的 `model_name` 可留空；
 - RSI 复选框控制**新任务**的 preset（`standard` / `rsi-infer`）；
   首次 Submit 前勾选直接生效；已有任务后勾选，会在下一轮/下一次提交时用新 preset 建新 session；
 - 同一进程内可以连续提交多轮，复用同一个 session；不需要清 `home\sessions`；

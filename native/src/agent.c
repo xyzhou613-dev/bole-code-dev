@@ -271,8 +271,7 @@ static int32_t config_copy(bole_config* target, const bole_config* source) {
 
   if (target->runtime_dir == NULL || target->runtime_dir[0] == '\0'
       || target->dsh_home == NULL || target->dsh_home[0] == '\0'
-      || target->model_provider == NULL || target->model_provider[0] == '\0'
-      || target->model_name == NULL || target->model_name[0] == '\0') {
+      || target->model_provider == NULL || target->model_provider[0] == '\0') {
     config_free(target);
     return BOLE_E_INVALID_CONFIG;
   }
@@ -1044,7 +1043,7 @@ static void handle_initialize(bole_handle* handle, const char* result, size_t re
   bole_buf_append_cstr(&payload, ",\"model\":{\"provider\":");
   bole_buf_append_json_string(&payload, handle->config.model_provider);
   bole_buf_append_cstr(&payload, ",\"model\":");
-  bole_buf_append_json_string(&payload, handle->config.model_name);
+  bole_buf_append_json_string(&payload, handle->config.model_name != NULL ? handle->config.model_name : "");
   bole_buf_append_cstr(&payload, "}}");
 
   bole_mutex_lock(&handle->state_lock);
@@ -1812,7 +1811,7 @@ int32_t BOLE_CALL bole_init(const bole_config* config, bole_handle** out_handle)
   bole_buf_append_cstr(&initialize, ",\"provider\":");
   bole_buf_append_json_string(&initialize, handle->config.model_provider);
   bole_buf_append_cstr(&initialize, ",\"model\":");
-  bole_buf_append_json_string(&initialize, handle->config.model_name);
+  bole_buf_append_json_string(&initialize, handle->config.model_name != NULL ? handle->config.model_name : "");
   if (handle->config.reasoning_effort != NULL) {
     bole_buf_append_cstr(&initialize, ",\"reasoningEffort\":");
     bole_buf_append_json_string(&initialize, handle->config.reasoning_effort);

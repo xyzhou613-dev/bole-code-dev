@@ -200,8 +200,8 @@ typedef enum bole_sandbox_mode {
  * Initialization configuration.
  *
  * The caller sets `size = sizeof(bole_config)`. Required fields: `runtime_dir`,
- * `dsh_home`, `model_provider`, `model_name`, and `event_cb`. Optional fields
- * may be NULL or zero.
+ * `dsh_home`, `model_provider`, and `event_cb`. `model_name` may be NULL or
+ * empty to use the runtime's `agent-default-model` selection.
  */
 typedef struct bole_config {
   /** `sizeof(bole_config)`. */
@@ -214,7 +214,7 @@ typedef struct bole_config {
   const char* cwd;
   /** Provider route passed to `initialize`, for example `"bole"`. */
   const char* model_provider;
-  /** Model id passed to `initialize`, for example `"qwen3.8-27b"`. */
+  /** Optional model id; NULL/empty uses the runtime default model. */
   const char* model_name;
   /** Optional reasoning effort id inherited by agents. */
   const char* reasoning_effort;

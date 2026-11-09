@@ -35,7 +35,7 @@ ABI 版本宏 `BOLE_ABI_VERSION = 0x00010000`（高 16 位主版本、低 16 位
 | `runtime_dir` | 运行时目录（含 `node.exe` 与 dsh 依赖树），UTF-8 |
 | `dsh_home` | 运行时独立 home，UTF-8；SDK 设为 `DSH_HOME` |
 | `cwd` | 默认会话 cwd（绝对路径）；NULL 用调用方进程 cwd |
-| `model_provider` / `model_name` | 传给 `initialize` 的路由，例如 `bole` / `qwen3.8-27b` |
+| `model_provider` / `model_name` | 传给 `initialize` 的路由；`model_name` 可为 NULL/空，使用 runtime 默认模型 |
 | `reasoning_effort` | 可选；传给 `initialize` |
 | `max_tokens` | 可选；0 用运行时默认 |
 | `rsi_enabled` | 新会话默认是否开 RSI；默认 0 |

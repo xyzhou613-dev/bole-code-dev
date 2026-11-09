@@ -80,7 +80,7 @@ static int run_example(int argc, char** argv) {
   config.runtime_dir = runtime;
   config.dsh_home = home;
   config.model_provider = "bole";
-  config.model_name = "qwen3.8-27b";
+  config.model_name = NULL;   /* use runtime agent-default-model */
   config.rsi_enabled = rsi;
   config.event_cb = on_event;
 

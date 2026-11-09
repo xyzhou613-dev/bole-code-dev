@@ -238,8 +238,15 @@ export class BoleSdkServer {
   async initialize(params: BoleInitializeParams): Promise<InitializeResult> {
     if (this.shuttingDown) throw business('INTERNAL', 'SDK server is shutting down')
     const cwd = requireAbsolute(params.cwd, 'cwd')
-    const provider = requireString(params.provider, 'provider')
-    const model = requireString(params.model, 'model')
+    const defaultSelection = this.ctx.get('agentDefaultModel')?.currentSelection()
+    const provider = typeof params.provider === 'string' && params.provider.trim() !== ''
+      ? params.provider
+      : defaultSelection?.provider
+    const model = typeof params.model === 'string' && params.model.trim() !== ''
+      ? params.model
+      : defaultSelection?.model
+    if (provider === undefined) throw invalid('provider must be a non-empty string')
+    if (model === undefined) throw invalid('model must be a non-empty string or configured as agent-default-model')
     if (params.reasoningEffort !== undefined && (typeof params.reasoningEffort !== 'string' || params.reasoningEffort.length === 0)) {
       throw invalid('reasoningEffort must be a non-empty string')
     }

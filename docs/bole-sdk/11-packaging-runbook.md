@@ -34,6 +34,7 @@ Copy-Item "<node-dir>\node.exe" "<runtime-dir>\node.exe" -Force
 ```powershell
 cd <repo>
 npm --prefix runtime/dev install
+npm --prefix runtime/dev run build
 node runtime/dev/build-experience.mjs
 node runtime/dev/pack.mjs
 node runtime/dev/pack-test.mjs

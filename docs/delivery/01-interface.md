@@ -96,7 +96,7 @@ SDK 是一层薄 C 封装：
 | `dsh_home` | 是 | 可写运行目录；不存在时 SDK 创建；用于会话、日志、缓存 |
 | `cwd` | 否 | 默认会话工作目录（绝对路径）；`NULL` 用调用方进程 cwd |
 | `model_provider` | 是 | 模型路由名，例如 `bole` |
-| `model_name` | 是 | 模型 id，例如 `qwen3.8-27b` |
+| `model_name` | 否 | 模型 id；`NULL`/空串使用 runtime 的 `agent-default-model` |
 | `reasoning_effort` | 否 | 推理强度；`NULL` 用运行时默认 |
 | `max_tokens` | 否 | 输出 token 上限；`0` 用运行时默认 |
 | `rsi_enabled` | 否 | 新会话默认是否开 RSI：`0` standard，`1` rsi-infer |

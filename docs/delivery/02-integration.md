@@ -95,7 +95,7 @@ int main(void) {
     config.dsh_home = "<包根>\\home";
     config.cwd = "<项目目录>";
     config.model_provider = "bole";
-    config.model_name = "qwen3.8-27b";
+    config.model_name = NULL;   /* 使用 runtime 的 agent-default-model；也可显式传模型 id */
     config.event_cb = on_event;
     bole_handle* handle = NULL;
     bole_session* session = NULL;
@@ -116,6 +116,7 @@ int main(void) {
 - `bole_init` 只启动进程，不等待模型；就绪由 `RUNTIME_READY` 和 `bole_wait_ready` 表达。
 - `bole_submit` 返回只表示消息已入队，不表示任务完成。
 - 终态由 `TASK_FINISHED` / `TASK_FAILED` 给出。
+- `model_name` 可传 `NULL`/空串，表示使用 `runtime/cordis.patch.yml` 的 `agent-default-model`；显式传模型 id 时以显式值为准。
 - `bole_release` 会回收运行时和工具进程树；退出前必须调用。
 
 ## 4. 事件回调与 UI 线程

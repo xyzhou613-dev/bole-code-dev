@@ -598,7 +598,7 @@ static DWORD WINAPI worker(LPVOID param) {
     config.runtime_dir = g_runtime_dir;
     config.dsh_home = g_dsh_home;
     config.model_provider = "bole";
-    config.model_name = "qwen3.8-27b";
+    config.model_name = NULL;   /* use runtime agent-default-model */
     config.rsi_enabled = (int32_t)InterlockedCompareExchange(&g_rsi_enabled, 0, 0);
     config.event_cb = on_event;
     config.user_data = hwnd;
