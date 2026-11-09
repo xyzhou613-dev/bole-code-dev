@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include "bole_agent.h"
 
 #define WM_BOLE_EVENT (WM_APP + 1)
@@ -19,6 +20,7 @@
 #define ID_STATUS 104
 #define ID_RESULT 105
 #define ID_RSI 106
+#define ID_OPEN_LOG 107
 #define PATH_CAP 4096
 
 static HWND g_input, g_submit, g_cancel, g_status, g_result, g_rsi;
@@ -36,9 +38,12 @@ static char g_session_id[64];
 static char g_log[256 * 1024];
 static char g_log_path[PATH_CAP];
 static FILE* g_log_file;
+static unsigned g_turn_no;
+static ULONGLONG g_task_tick;
+static int g_answer_started;
+static char g_pending_prompt[4096];
 
 static void open_log_file(void);
-static void log_file_line(const char* text);
 
 
 static char* wide_to_utf8(const wchar_t* text) {
@@ -172,9 +177,7 @@ static void post_text(HWND hwnd, int control, const char* text) {
 }
 
 static void append_result(HWND hwnd, const char* text) {
-  size_t used;
-  log_file_line(text);
-  used = strlen(g_log);
+  size_t used = strlen(g_log);
   size_t length = text == NULL ? 0 : strlen(text);
   /* Keep the newest part instead of silently dropping new events. */
   if (used + length + 2 >= sizeof(g_log)) {
@@ -237,14 +240,15 @@ static void open_log_file(void) {
   }
 }
 
-static void log_file_line(const char* text) {
-  SYSTEMTIME now;
-  if (g_log_file == NULL || text == NULL) return;
-  GetLocalTime(&now);
-  fprintf(g_log_file, "%02u:%02u:%02u %s\r\n",
-          (unsigned)now.wHour, (unsigned)now.wMinute, (unsigned)now.wSecond, text);
+static void log_file_printf(const char* format, ...) {
+  va_list args;
+  if (g_log_file == NULL || format == NULL) return;
+  va_start(args, format);
+  vfprintf(g_log_file, format, args);
+  va_end(args);
   fflush(g_log_file);
 }
+
 
 static int json_string_field(const char* json, const char* key, char* out, size_t capacity) {
   char pattern[64];
@@ -296,6 +300,118 @@ static int json_string_field(const char* json, const char* key, char* out, size_
   return 1;
 }
 
+static int json_value_field(const char* json, const char* key, char* out, size_t capacity) {
+  char pattern[64];
+  const char* p;
+  size_t n = 0;
+  if (json == NULL || key == NULL || out == NULL || capacity == 0) return 0;
+  snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+  p = strstr(json, pattern);
+  if (p == NULL) return 0;
+  p += strlen(pattern);
+  while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+  if (*p != ':') return 0;
+  p++;
+  while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+  if (*p == '{' || *p == '[') {
+    char open = *p;
+    char close = open == '{' ? '}' : ']';
+    int depth = 0;
+    int in_string = 0;
+    int escaped = 0;
+    while (*p != '\0') {
+      char c = *p++;
+      if (in_string) {
+        if (escaped) escaped = 0;
+        else if (c == '\\') escaped = 1;
+        else if (c == '"') in_string = 0;
+      } else {
+        if (c == '"') in_string = 1;
+        else if (c == open) depth++;
+        else if (c == close) {
+          depth--;
+          if (depth == 0) {
+            if (n + 1 < capacity) out[n++] = c;
+            break;
+          }
+        }
+      }
+      if (n + 1 < capacity) out[n++] = c;
+    }
+  } else {
+    while (*p != '\0' && *p != ',' && *p != '}' && *p != '\n' && *p != '\r') {
+      if (n + 1 < capacity) out[n++] = *p;
+      p++;
+    }
+  }
+  out[n] = '\0';
+  return 1;
+}
+
+static void log_task_start(void) {
+  SYSTEMTIME now;
+  if (g_log_file == NULL) return;
+  GetLocalTime(&now);
+  g_turn_no++;
+  g_task_tick = GetTickCount64();
+  g_answer_started = 0;
+  log_file_printf("\r\n============================================================\r\n");
+  log_file_printf("任务 #%u  %04u-%02u-%02u %02u:%02u:%02u\r\n",
+                  g_turn_no, (unsigned)now.wYear, (unsigned)now.wMonth,
+                  (unsigned)now.wDay, (unsigned)now.wHour,
+                  (unsigned)now.wMinute, (unsigned)now.wSecond);
+  log_file_printf("用户：\r\n%s\r\n", g_pending_prompt[0] != '\0' ? g_pending_prompt : "(空)");
+}
+
+static void log_tool_start(const char* payload) {
+  char tool[160];
+  char args[512];
+  if (g_log_file == NULL || !json_string_field(payload, "tool", tool, sizeof(tool))) return;
+  log_file_printf("工具：%s\r\n", tool);
+  if (json_value_field(payload, "args", args, sizeof(args))) {
+    log_file_printf("参数：%s\r\n", args);
+  }
+}
+
+static void log_tool_done(const char* payload) {
+  char tool[160];
+  char result[1024];
+  if (g_log_file == NULL) return;
+  if (!json_string_field(payload, "tool", tool, sizeof(tool))) return;
+  if (json_string_field(payload, "resultSummary", result, sizeof(result))) {
+    if (payload != NULL && strstr(payload, "\"isError\":true") != NULL) {
+      log_file_printf("结果（错误）：%s\r\n", result);
+    } else {
+      log_file_printf("结果：%s\r\n", result);
+    }
+  } else {
+    log_file_printf("结果：%s 已完成\r\n", tool);
+  }
+}
+
+static void log_answer(const char* text) {
+  if (g_log_file == NULL || text == NULL || text[0] == '\0') return;
+  if (!g_answer_started) {
+    log_file_printf("\r\n回答：\r\n");
+    g_answer_started = 1;
+  }
+  log_file_printf("%s\r\n", text);
+}
+
+static void log_task_end(const char* status, const char* payload) {
+  char message[512];
+  double seconds = 0.0;
+  if (g_log_file == NULL) return;
+  if (g_task_tick != 0) {
+    seconds = (double)(GetTickCount64() - g_task_tick) / 1000.0;
+  }
+  log_file_printf("\r\n状态：%s    耗时：%.1fs\r\n", status != NULL ? status : "unknown", seconds);
+  if (payload != NULL && json_string_field(payload, "message", message, sizeof(message))) {
+    log_file_printf("错误：%s\r\n", message);
+  }
+  log_file_printf("============================================================\r\n");
+}
+
 static void post_log(HWND hwnd, const char* prefix, const char* value) {
   size_t size;
   char* line;
@@ -318,6 +434,7 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
   switch (event->type) {
     case BOLE_EVENT_RUNTIME_READY: post_text(hwnd, ID_STATUS, "runtime ready"); break;
     case BOLE_EVENT_TASK_STARTED:
+      log_task_start();
       g_log[0] = '\0';
       SetWindowTextW(g_result, L"");
       InterlockedExchange(&g_has_turn, 1);
@@ -325,12 +442,14 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
       post_text(hwnd, ID_RESULT, "[task] started");
       break;
     case BOLE_EVENT_TOOL_CALL_STARTED:
+      log_tool_start(event->payload_json);
       post_text(hwnd, ID_STATUS, "tool running");
       if (json_string_field(event->payload_json, "tool", tool, sizeof(tool))) {
         post_log(hwnd, "[tool] ", tool);
       }
       break;
     case BOLE_EVENT_TOOL_CALL_FINISHED:
+      log_tool_done(event->payload_json);
       post_text(hwnd, ID_STATUS, "tool done");
       if (json_string_field(event->payload_json, "tool", tool, sizeof(tool))) {
         if (json_string_field(event->payload_json, "resultSummary", result, sizeof(result))) {
@@ -348,6 +467,7 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
       size_t cap = event->payload_json == NULL ? 0 : strlen(event->payload_json) + 1;
       char* answer = cap == 0 ? NULL : (char*)malloc(cap);
       if (answer != NULL && json_string_field(event->payload_json, "text", answer, cap)) {
+        log_answer(answer);
         post_log(hwnd, "[answer] ", answer);
       }
       free(answer);
@@ -355,15 +475,18 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
     }
     case BOLE_EVENT_TASK_FINISHED:
       if (event->payload_json != NULL && strstr(event->payload_json, "aborted") != NULL) {
+        log_task_end("aborted", NULL);
         post_text(hwnd, ID_STATUS, "finished (aborted)");
         post_text(hwnd, ID_RESULT, "[task] finished (aborted)");
       } else {
+        log_task_end("finished", NULL);
         post_text(hwnd, ID_STATUS, "finished");
         post_text(hwnd, ID_RESULT, "[task] finished");
       }
       InterlockedExchange(&g_running, 0);
       break;
     case BOLE_EVENT_TASK_FAILED:
+      log_task_end("failed", event->payload_json);
       post_text(hwnd, ID_STATUS, "failed");
       if (json_string_field(event->payload_json, "message", message, sizeof(message))) {
         post_log(hwnd, "[task] failed: ", message);
@@ -452,6 +575,7 @@ static DWORD WINAPI worker(LPVOID param) {
     InterlockedExchange(&g_running, 0);
     return 0;
   }
+  snprintf(g_pending_prompt, sizeof(g_pending_prompt), "%s", text);
   int submit_result = bole_submit(g_session, text);
   free(text);
   if (submit_result != 0) {
@@ -515,6 +639,15 @@ static void on_command(HWND hwnd, int id) {
     int enabled = SendMessageA(g_rsi, BM_GETCHECK, 0, 0) == BST_CHECKED;
     InterlockedExchange(&g_rsi_enabled, enabled);
     apply_rsi(hwnd, enabled);
+  } else if (id == ID_OPEN_LOG) {
+    wchar_t* wide = g_log_path[0] == '\0' ? NULL : utf8_to_wide(g_log_path);
+    if (g_log_file == NULL || wide == NULL) {
+      SetWindowTextA(g_status, "log unavailable");
+      free(wide);
+    } else {
+      ShellExecuteW(hwnd, L"open", wide, NULL, NULL, SW_SHOWNORMAL);
+      free(wide);
+    }
   }
 }
 
@@ -530,8 +663,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
       g_rsi = CreateWindowA("BUTTON", "RSI", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                             210, 46, 70, 24, hwnd, (HMENU)ID_RSI, NULL, NULL);
       g_status = CreateWindowA("STATIC", g_path_error[0] != '\0' ? g_path_error : "idle",
-                               WS_CHILD | WS_VISIBLE, 290, 48, 180, 20,
+                               WS_CHILD | WS_VISIBLE, 290, 48, 95, 20,
                                hwnd, (HMENU)ID_STATUS, NULL, NULL);
+      CreateWindowA("BUTTON", "Open Log", WS_CHILD | WS_VISIBLE,
+                    390, 44, 70, 26, hwnd, (HMENU)ID_OPEN_LOG, NULL, NULL);
       g_result = CreateWindowA("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE |
                                ES_AUTOVSCROLL | WS_VSCROLL,
                                10, 80, 460, 240, hwnd, (HMENU)ID_RESULT, NULL, NULL);
