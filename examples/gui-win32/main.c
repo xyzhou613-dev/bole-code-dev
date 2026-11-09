@@ -34,6 +34,11 @@ static char g_dsh_home[PATH_CAP];
 static char g_path_error[512];
 static char g_session_id[64];
 static char g_log[256 * 1024];
+static char g_log_path[PATH_CAP];
+static FILE* g_log_file;
+
+static void open_log_file(void);
+static void log_file_line(const char* text);
 
 
 static char* wide_to_utf8(const wchar_t* text) {
@@ -167,7 +172,9 @@ static void post_text(HWND hwnd, int control, const char* text) {
 }
 
 static void append_result(HWND hwnd, const char* text) {
-  size_t used = strlen(g_log);
+  size_t used;
+  log_file_line(text);
+  used = strlen(g_log);
   size_t length = text == NULL ? 0 : strlen(text);
   /* Keep the newest part instead of silently dropping new events. */
   if (used + length + 2 >= sizeof(g_log)) {
@@ -196,6 +203,47 @@ static void append_result(HWND hwnd, const char* text) {
   int wide_length = GetWindowTextLengthW(hwnd);
   SendMessageW(hwnd, EM_SETSEL, (WPARAM)wide_length, (LPARAM)wide_length);
   SendMessageW(hwnd, EM_SCROLLCARET, 0, 0);
+}
+
+static void open_log_file(void) {
+  char dir[PATH_CAP];
+  SYSTEMTIME now;
+  wchar_t* wide;
+
+  if (g_dsh_home[0] == '\0') return;
+  snprintf(dir, sizeof(dir), "%s\\logs", g_dsh_home);
+  wide = utf8_to_wide(dir);
+  if (wide != NULL) {
+    (void)CreateDirectoryW(wide, NULL);
+    free(wide);
+  }
+
+  GetLocalTime(&now);
+  snprintf(g_log_path, sizeof(g_log_path),
+           "%s\\gui-%04u%02u%02u-%02u%02u%02u-%lu.log",
+           dir, (unsigned)now.wYear, (unsigned)now.wMonth, (unsigned)now.wDay,
+           (unsigned)now.wHour, (unsigned)now.wMinute, (unsigned)now.wSecond,
+           (unsigned long)GetCurrentProcessId());
+  wide = utf8_to_wide(g_log_path);
+  if (wide != NULL) {
+    g_log_file = _wfopen(wide, L"ab");
+    free(wide);
+  }
+  if (g_log_file != NULL) {
+    fprintf(g_log_file, "# Bole SDK GUI log\r\n");
+    fprintf(g_log_file, "# pid=%lu\r\n# runtime=%s\r\n# home=%s\r\n",
+            (unsigned long)GetCurrentProcessId(), g_runtime_dir, g_dsh_home);
+    fflush(g_log_file);
+  }
+}
+
+static void log_file_line(const char* text) {
+  SYSTEMTIME now;
+  if (g_log_file == NULL || text == NULL) return;
+  GetLocalTime(&now);
+  fprintf(g_log_file, "%02u:%02u:%02u %s\r\n",
+          (unsigned)now.wHour, (unsigned)now.wMinute, (unsigned)now.wSecond, text);
+  fflush(g_log_file);
 }
 
 static int json_string_field(const char* json, const char* key, char* out, size_t capacity) {
@@ -514,6 +562,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         g_worker = NULL;
       }
       if (g_handle != NULL) bole_release(g_handle);
+      if (g_log_file != NULL) {
+        fclose(g_log_file);
+        g_log_file = NULL;
+      }
       PostQuitMessage(0);
       return 0;
   }
@@ -527,6 +579,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int show) {
   wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
   resolve_paths(argc, argv);
   if (argv != NULL) LocalFree(argv);
+  open_log_file();
 
   WNDCLASSA cls;
   memset(&cls, 0, sizeof(cls));
