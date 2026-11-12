@@ -25,6 +25,49 @@ Error: mcp-client(matlab): server is disconnected
 
 只调用了 `list_mcp_resources`，没有继续调用 `list_mcp_resource_templates`。
 
+### 任务 5：不指定工具名
+
+提示词：
+
+```text
+你调用两个工具试试
+```
+
+输出：
+
+```text
+好的，我调用两个 toy 服务器的工具试试。
+```
+
+耗时 1.1s，没有任何 `TOOL_CALL_STARTED`。
+
+### 任务 9：不指定工具名
+
+提示词：
+
+```text
+调用两次注册的工具，参数随意
+```
+
+输出：
+
+```text
+好的，我调用两个不同的已注册工具试试。
+```
+
+耗时 1.1s，没有任何 `TOOL_CALL_STARTED`。
+
+### 任务 6/7/8：显式点名工具
+
+提示词里明确写了 `mcp__toy__echo` 时，125b 能正常调用：
+
+```text
+mcp__toy__echo {"text":"hello"}
+mcp__toy__echo {"text":"你好"}
+```
+
+说明不是工具不可用，而是不点名就不主动调用。
+
 ### 输出
 
 ```text
