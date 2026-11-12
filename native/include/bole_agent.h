@@ -44,7 +44,7 @@ extern "C" {
 #endif
 
 /** ABI version: major in the high 16 bits, minor in the low 16 bits. */
-#define BOLE_ABI_VERSION 0x00010000u
+#define BOLE_ABI_VERSION 0x00010001u
 
 /** Maximum preset id length including the terminating NUL. */
 #define BOLE_PRESET_MAX 64
@@ -236,7 +236,9 @@ typedef struct bole_config {
 
 /**
  * Per-session creation options. Set `size = sizeof(bole_session_options)`.
- * A NULL options pointer selects the defaults from @ref bole_config.
+ * A NULL options pointer selects the defaults from @ref bole_config. Fields
+ * beyond an older caller's declared `size` are ignored, so appending fields is
+ * ABI-compatible.
  */
 typedef struct bole_session_options {
   /** `sizeof(bole_session_options)`. */
@@ -245,6 +247,10 @@ typedef struct bole_session_options {
   const char* cwd;
   /** Preset id (`"standard"` or `"rsi-infer"`); NULL uses the current default. */
   const char* preset;
+  /** Optional reasoning effort for this session; NULL uses bole_config's default. */
+  const char* reasoning_effort;
+  /** Optional output-token cap for this session; 0 uses bole_config's default. */
+  int32_t max_tokens;
 } bole_session_options;
 
 /** Snapshot of the default RSI state. Set `size` before calling bole_rsi_get. */

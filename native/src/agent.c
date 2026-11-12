@@ -1392,6 +1392,8 @@ static int32_t build_session_params(const char* session_id,
   }
   const char* cwd = NULL;
   const char* preset = NULL;
+  const char* reasoning_effort = NULL;
+  int32_t max_tokens = 0;
   if (options != NULL) {
     if (options->size < sizeof(uint32_t)) {
       return BOLE_E_INVALID_CONFIG;
@@ -1403,10 +1405,22 @@ static int32_t build_session_params(const char* session_id,
     if (BOLE_OPTIONS_FIELD_OK(declared, preset)) {
       preset = options->preset;
     }
+    if (BOLE_OPTIONS_FIELD_OK(declared, reasoning_effort)) {
+      reasoning_effort = options->reasoning_effort;
+    }
+    if (BOLE_OPTIONS_FIELD_OK(declared, max_tokens)) {
+      max_tokens = options->max_tokens;
+    }
     if (cwd != NULL && !is_absolute_path(cwd)) {
       return BOLE_E_INVALID_CONFIG;
     }
     if (preset != NULL && preset[0] == '\0') {
+      return BOLE_E_INVALID_CONFIG;
+    }
+    if (reasoning_effort != NULL && reasoning_effort[0] == '\0') {
+      return BOLE_E_INVALID_CONFIG;
+    }
+    if (max_tokens < 0) {
       return BOLE_E_INVALID_CONFIG;
     }
   }
@@ -1422,6 +1436,13 @@ static int32_t build_session_params(const char* session_id,
   if (preset != NULL) {
     bole_buf_append_cstr(out, ",\"preset\":");
     bole_buf_append_json_string(out, preset);
+  }
+  if (reasoning_effort != NULL) {
+    bole_buf_append_cstr(out, ",\"reasoningEffort\":");
+    bole_buf_append_json_string(out, reasoning_effort);
+  }
+  if (max_tokens > 0) {
+    bole_buf_appendf(out, ",\"maxTokens\":%d", (int)max_tokens);
   }
   bole_buf_append_cstr(out, "}");
   return BOLE_OK;

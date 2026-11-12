@@ -21,9 +21,11 @@
 #define ID_RESULT 105
 #define ID_RSI 106
 #define ID_OPEN_LOG 107
+#define ID_THINK 108
+#define ID_MAX_TOKENS 109
 #define PATH_CAP 4096
 
-static HWND g_input, g_submit, g_cancel, g_status, g_result, g_rsi;
+static HWND g_input, g_submit, g_cancel, g_status, g_result, g_rsi, g_think, g_max_tokens_edit;
 static bole_handle* g_handle;
 static bole_session* g_session;
 static HANDLE g_worker;
@@ -45,6 +47,11 @@ static ULONGLONG g_task_tick;
 static int g_answer_started;
 static int g_reasoning_started;
 static char g_pending_prompt[4096];
+static char g_reasoning_effort[32] = "off";
+static char g_session_reasoning_effort[32] = "";
+static int g_max_tokens = 8192;
+static int g_session_max_tokens = 0;
+static unsigned g_session_seq;
 
 static void open_log_file(void);
 
@@ -640,14 +647,28 @@ static DWORD WINAPI worker(LPVOID param) {
     InterlockedExchange(&g_has_turn, 0);
   }
 
+  if (g_session != NULL
+      && (strcmp(g_reasoning_effort, g_session_reasoning_effort) != 0
+          || g_max_tokens != g_session_max_tokens)) {
+    g_session = NULL;
+    g_session_seq++;
+  }
+
   if (g_session == NULL) {
-    snprintf(g_session_id, sizeof(g_session_id), "gui-%lu",
-             (unsigned long)GetCurrentProcessId());
-    if (bole_session_create(g_handle, g_session_id, NULL, &g_session) != 0) {
+    snprintf(g_session_id, sizeof(g_session_id), "gui-%lu-%u",
+             (unsigned long)GetCurrentProcessId(), g_session_seq);
+    bole_session_options options;
+    memset(&options, 0, sizeof(options));
+    options.size = sizeof(options);
+    options.reasoning_effort = g_reasoning_effort;
+    options.max_tokens = g_max_tokens;
+    if (bole_session_create(g_handle, g_session_id, &options, &g_session) != 0) {
       post_text(hwnd, ID_STATUS, "session create failed");
       InterlockedExchange(&g_running, 0);
       return 0;
     }
+    copy_string(g_session_reasoning_effort, sizeof(g_session_reasoning_effort), g_reasoning_effort);
+    g_session_max_tokens = g_max_tokens;
     if (InterlockedCompareExchange(&g_rsi_enabled, 0, 0)) {
       (void)bole_session_set_preset(g_session, "rsi-infer");
     }
@@ -712,6 +733,16 @@ static void on_command(HWND hwnd, int id) {
       CloseHandle(g_worker);
       g_worker = NULL;
     }
+    int think_index = (int)SendMessageA(g_think, CB_GETCURSEL, 0, 0);
+    if (think_index == CB_ERR || SendMessageA(g_think, CB_GETLBTEXT, think_index,
+                                              (LPARAM)g_reasoning_effort) == CB_ERR
+        || strcmp(g_reasoning_effort, "default") == 0) {
+      g_reasoning_effort[0] = '\0';
+    }
+    char max_text[32];
+    GetWindowTextA(g_max_tokens_edit, max_text, sizeof(max_text));
+    g_max_tokens = atoi(max_text);
+    if (g_max_tokens < 0) g_max_tokens = 0;
     g_log[0] = '\0';
     SetWindowTextW(g_result, L"");
     SetWindowTextA(g_status, "starting");
@@ -754,9 +785,23 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                                hwnd, (HMENU)ID_STATUS, NULL, NULL);
       CreateWindowA("BUTTON", "Open Log", WS_CHILD | WS_VISIBLE,
                     390, 44, 70, 26, hwnd, (HMENU)ID_OPEN_LOG, NULL, NULL);
+      CreateWindowA("STATIC", "Think", WS_CHILD | WS_VISIBLE,
+                    10, 78, 40, 20, hwnd, NULL, NULL, NULL);
+      g_think = CreateWindowA("COMBOBOX", "", WS_CHILD | WS_VISIBLE | WS_BORDER | CBS_DROPDOWNLIST,
+                              52, 74, 82, 140, hwnd, (HMENU)ID_THINK, NULL, NULL);
+      CreateWindowA("STATIC", "Max out", WS_CHILD | WS_VISIBLE,
+                    144, 78, 48, 20, hwnd, NULL, NULL, NULL);
+      g_max_tokens_edit = CreateWindowA("EDIT", "8192",
+                                        WS_CHILD | WS_VISIBLE | WS_BORDER | ES_NUMBER,
+                                        194, 74, 62, 22, hwnd, (HMENU)ID_MAX_TOKENS, NULL, NULL);
+      static const char* levels[] = { "default", "off", "low", "medium", "high", "xhigh" };
+      for (size_t i = 0; i < sizeof(levels) / sizeof(levels[0]); i++) {
+        SendMessageA(g_think, CB_ADDSTRING, 0, (LPARAM)levels[i]);
+      }
+      SendMessageA(g_think, CB_SETCURSEL, 0, 0);
       g_result = CreateWindowA("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE |
                                ES_AUTOVSCROLL | WS_VSCROLL,
-                               10, 80, 460, 240, hwnd, (HMENU)ID_RESULT, NULL, NULL);
+                               10, 108, 460, 252, hwnd, (HMENU)ID_RESULT, NULL, NULL);
       return 0;
     case WM_COMMAND: on_command(hwnd, LOWORD(wp)); return 0;
     case WM_BOLE_RSI:
@@ -818,7 +863,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int show) {
   RegisterClassA(&cls);
   HWND hwnd = CreateWindowA("BoleSdkGui", "Bole SDK",
                             WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
-                            100, 100, 500, 380, NULL, NULL, instance, NULL);
+                            100, 100, 500, 410, NULL, NULL, instance, NULL);
   ShowWindow(hwnd, show);
   MSG msg;
   while (GetMessageA(&msg, NULL, 0, 0)) {

@@ -37,6 +37,9 @@ $env:BOLE_DSH_HOME = "<package>\home"
 ## 行为
 
 - 模型默认取 `runtime/cordis.patch.yml` 的 `agent-default-model`；C 配置里的 `model_name` 可留空；
+- **Think** 下拉框选择本次会话的推理强度（default/off/low/medium/high/xhigh）；
+- **Max out** 输入框填写本次会话的输出上限；修改后下一次 Submit 会建新会话生效；
+- `default` 沿用 `runtime/cordis.patch.yml` 的 `agent-default-model.reasoningEffort`；
 - RSI 复选框控制**新任务**的 preset（`standard` / `rsi-infer`）；
   首次 Submit 前勾选直接生效；已有任务后勾选，会在下一轮/下一次提交时用新 preset 建新 session；
 - 同一进程内可以连续提交多轮，复用同一个 session；不需要清 `home\sessions`；

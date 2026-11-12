@@ -1,8 +1,11 @@
 /* Bole SDK console example: one tool call, end to end.
  * Usage: console [prompt]
- *        console <runtime_dir> <dsh_home> "prompt"  (legacy override)   */
+ *        console <runtime_dir> <dsh_home> "prompt"  (legacy override)
+ *
+ * BOLE_MODEL optionally pins the model id; unset keeps the runtime default. */
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -34,6 +37,15 @@ static void BOLE_CALL on_event(void* user, const bole_event* event) {
       break;
     default: break;
   }
+}
+
+/* Print the last recorded error so a failed negotiation names its cause. */
+static void report_failure(bole_handle* handle, const char* what, int32_t code) {
+  int32_t last = 0;
+  char message[512];
+  memset(message, 0, sizeof(message));
+  bole_last_error(handle, &last, message, sizeof(message));
+  fprintf(stderr, "%s failed code=%d last=%d msg=%s\n", what, (int)code, (int)last, message);
 }
 
 static int run_example(int argc, char** argv) {
@@ -80,7 +92,11 @@ static int run_example(int argc, char** argv) {
   config.runtime_dir = runtime;
   config.dsh_home = home;
   config.model_provider = "bole";
-  config.model_name = NULL;   /* use runtime agent-default-model */
+  /* NULL/empty selects the runtime agent-default-model. */
+  config.model_name = getenv("BOLE_MODEL");
+  config.reasoning_effort = getenv("BOLE_REASONING_EFFORT");
+  const char* max_tokens = getenv("BOLE_MAX_TOKENS");
+  config.max_tokens = max_tokens != NULL ? atoi(max_tokens) : 0;
   config.rsi_enabled = rsi;
   config.event_cb = on_event;
 
@@ -103,8 +119,18 @@ static int run_example(int argc, char** argv) {
   snprintf(session_id, sizeof(session_id), "console-%ld", (long)getpid());
 #endif
   bole_session* session = NULL;
-  if (bole_session_create(handle, session_id, NULL, &session) != 0) { fprintf(stderr, "create failed\n"); bole_release(handle); return 1; }
-  if (bole_submit(session, prompt) != 0) { fprintf(stderr, "submit failed\n"); bole_release(handle); return 1; }
+  int32_t create_code = bole_session_create(handle, session_id, NULL, &session);
+  if (create_code != 0) {
+    report_failure(handle, "create", create_code);
+    bole_release(handle);
+    return 1;
+  }
+  int32_t submit_code = bole_submit(session, prompt);
+  if (submit_code != 0) {
+    report_failure(handle, "submit", submit_code);
+    bole_release(handle);
+    return 1;
+  }
 
   /* The callback sets g_done on TASK_FINISHED/TASK_FAILED; 60 s bound. */
   for (int i = 0; i < 600 && !g_done; i++) {
@@ -122,6 +148,8 @@ static int run_example(int argc, char** argv) {
     fflush(stdout);
     (void)getchar();
   }
+#else
+  (void)interactive;
 #endif
   return g_done && !g_failed ? 0 : 1;
 }

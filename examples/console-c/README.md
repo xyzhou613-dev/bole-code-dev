@@ -62,3 +62,13 @@ PASS console-c C2/M0 tool call
 检查项：runtime ready、preset registry、standard 工具调用完成、rsi-infer 收据、
 取消后 `aborted`、trace 导出。失败时打印首个失败检查并以非零码退出。
 
+
+## 模型参数
+
+```text
+BOLE_MODEL=<模型ID>
+BOLE_REASONING_EFFORT=high
+BOLE_MAX_TOKENS=8192
+```
+
+不设置 `BOLE_MODEL` 时使用 runtime 的 `agent-default-model`。

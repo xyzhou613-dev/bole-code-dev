@@ -39,7 +39,7 @@ findstr /N "baseURL model:" runtime\cordis.patch.yml
 ```text
 baseURL 指向客户实际网关
 model 和 models[].id 一致
-125b 没有 reasoningEfforts / chatTemplateKwargs
+125b 的 reasoningEfforts 只声明 low/medium/xhigh（high 映射 xhigh），并设置 supportsDeveloperRole: false
 ```
 
 ## 3. 看 MATLAB MCP

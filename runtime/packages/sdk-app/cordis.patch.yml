@@ -104,7 +104,8 @@
 - id: agent-default-model
   config:
     provider: bole
-    model: qwen3.8-27b
+    model: qwen3.8-flash-next-w4
+    reasoningEffort: high
 
 - id: llm-pi-ai
   config:
@@ -118,18 +119,20 @@
         # home/.env supplies BOLE_API_KEY=local.
         apiKeyEnv: BOLE_API_KEY
         models:
-          - id: qwen3.8-27b
-            # vLLM's Qwen template enables thinking by default. Declaring a
-            # reasoning capability is required for pi-ai to evaluate compat;
-            # chat-template + the explicit false sends the same field as the
-            # gateway's documented curl.
+          - id: qwen3.8-flash-next-w4
+            maxTokens: 8192
             reasoningEfforts:
               off: null
-              high: high
+              low: low
+              medium: medium
+              high: xhigh
+              xhigh: xhigh
             compat:
-              thinkingFormat: chat-template
-              chatTemplateKwargs:
-                enable_thinking: false
+              supportsDeveloperRole: false
+              thinkingFormat: qwen
+              supportsReasoningEffort: true
+              maxTokensField: max_tokens
+
 
 # No answerer exists in a headless runtime; `ask` would fail closed.
 - id: approval

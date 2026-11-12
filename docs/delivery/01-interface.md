@@ -115,6 +115,8 @@ SDK 是一层薄 C 封装：
 | `size` | 是 | `sizeof(bole_session_options)` |
 | `cwd` | 否 | 会话工作目录（绝对路径）；`NULL` 用 `bole_config.cwd` |
 | `preset` | 否 | `standard` 或 `rsi-infer`；`NULL` 用当前默认 |
+| `reasoning_effort` | 否 | 本次会话推理强度；`NULL` 用 `bole_config.reasoning_effort` |
+| `max_tokens` | 否 | 本次会话输出上限；`0` 用 `bole_config.max_tokens` |
 
 ### 3.4 沙箱
 
@@ -256,7 +258,7 @@ BOLE_API int32_t BOLE_CALL bole_session_create(
     const bole_session_options* options, bole_session** out_session);
 ```
 
-- 按 id 建会话，可覆盖 `cwd` / `preset`。
+- 按 id 建会话，可覆盖 `cwd` / `preset` / `reasoning_effort` / `max_tokens`；后两者只影响该会话。
 - 只做创建和预设挂载，不触模型、不触工具。
 - 返回 `0`、`1002`、`1004`、`2003`、`4002`。
 - 回调中允许调用。
@@ -593,7 +595,7 @@ RSI 是模式，不是独立服务开关：
 ## 10. 限制与版本
 
 - 平台：Windows 10 / 11 x64；不支持 32 位和其他系统。
-- C ABI 版本：`BOLE_ABI_VERSION = 0x00010000`。
+- C ABI 版本：`BOLE_ABI_VERSION = 0x00010001`。
 - 协议版本：`sdkProtocolVersion = 1`。
 - 单行 JSON-RPC 上限默认 64 MiB，可由 `max_line_bytes` 覆盖。
 - 图片支持 `image/png`、`image/jpeg`、`image/webp`、`image/gif`。

@@ -29,7 +29,7 @@
 | 方法 | 方向 | 入参 | 出参 | 落点 | 备注 |
 | --- | --- | --- | --- | --- | --- |
 | `initialize` | 客户端 → 运行时 | `cwd`、`provider`、`model`、可选 `reasoningEffort`、可选 `maxTokens`、可选 `rsiEnabled` | `{ serverInfo, sdkProtocolVersion, capabilities }` | 官方 `initialize` + 插件扩展 | 就绪边界；冷启动 0.6–0.8 秒 |
-| `session/create` | 客户端 → 运行时 | `sessionId`、可选 `cwd`、可选 `preset` | `{ sessionId, preset, cwd }` | `ctx.agents.create` + 发布前 `ctx.agentPresets.mount` | 不触模型、不触工具；id 已存在返回 `SESSION_EXISTS` |
+| `session/create` | 客户端 → 运行时 | `sessionId`、可选 `cwd`、可选 `preset`、可选 `reasoningEffort`、可选 `maxTokens` | `{ sessionId, preset, cwd }` | `ctx.agents.create` + 发布前 `ctx.agentPresets.mount` | 不触模型、不触工具；id 已存在返回 `SESSION_EXISTS` |
 | `session/resume` | 客户端 → 运行时 | `sessionId` | `{ sessionId, preset, cwd }` | `ctx.agents.resume` | 要求 `sessionPersistence` 与查询服务；preset 定义缺失拒绝 |
 | `session/setPreset` | 客户端 → 运行时 | `sessionId`、`preset` | `{ sessionId, preset }` | `ctx.agentPresets.select` | 仅空白会话；首个 turn 后 `PRESET_LOCKED` |
 | `session/prompt` | 客户端 → 运行时 | `sessionId`、`contentBlocks` | `{ messageId }` | 官方 `prompt`（`followup`） | 入队即返回；未知会话按默认 cwd/preset 懒创建 |

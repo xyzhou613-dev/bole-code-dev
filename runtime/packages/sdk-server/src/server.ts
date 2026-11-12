@@ -35,6 +35,8 @@ interface SessionRecord {
   handle: AgentHandle
   preset: string | undefined
   cwd: string
+  reasoningEffort?: ReturnType<typeof ReasoningEffortId>
+  maxTokens?: number
 }
 
 interface SessionResult {
@@ -257,7 +259,9 @@ export class BoleSdkServer {
       throw invalid('rsiEnabled must be a boolean')
     }
     const reasoningEffort = params.reasoningEffort === undefined
-      ? undefined
+      ? (defaultSelection?.reasoningEffort === undefined
+          ? undefined
+          : ReasoningEffortId(defaultSelection.reasoningEffort))
       : ReasoningEffortId(params.reasoningEffort)
     if (!this.hasAdapterFor(provider)) {
       if (provider !== 'deepseek-official') throw business('MODEL_NOT_FOUND', `no adapter registered for provider "${provider}"`)
@@ -299,10 +303,24 @@ export class BoleSdkServer {
     const sessionId = requireString(params.sessionId, 'sessionId')
     const cwd = params.cwd === undefined ? this.cwd : requireAbsolute(params.cwd, 'cwd')
     const preset = optionalString(params.preset, 'preset')
+    const reasoningEffort = params.reasoningEffort === undefined
+      ? undefined
+      : ReasoningEffortId(requireString(params.reasoningEffort, 'reasoningEffort'))
+    if (params.maxTokens !== undefined
+        && (typeof params.maxTokens !== 'number'
+            || !Number.isSafeInteger(params.maxTokens)
+            || params.maxTokens <= 0)) {
+      throw invalid('maxTokens must be a positive safe integer')
+    }
+    const maxTokens = params.maxTokens as number | undefined
     if (this.sessions.has(sessionId) || this.sessionCreations.has(sessionId)) {
       throw business('SESSION_EXISTS', `session "${sessionId}" already exists`)
     }
-    return this.toResult(sessionId, await this.createRecord(sessionId, cwd, preset))
+    const overrides = {
+      ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
+      ...(maxTokens === undefined ? {} : { maxTokens }),
+    }
+    return this.toResult(sessionId, await this.createRecord(sessionId, cwd, preset, overrides))
   }
 
   /**
@@ -559,7 +577,12 @@ export class BoleSdkServer {
     }
   }
 
-  private async createRecord(sessionId: string, cwd: string, presetId: string | undefined): Promise<SessionRecord> {
+  private async createRecord(
+    sessionId: string,
+    cwd: string,
+    presetId: string | undefined,
+    options: { reasoningEffort?: ReturnType<typeof ReasoningEffortId>; maxTokens?: number } = {},
+  ): Promise<SessionRecord> {
     if (this.ctx.agents.get(sessionId as SessionId) !== undefined) {
       throw business('SESSION_EXISTS', `session "${sessionId}" already exists`)
     }
@@ -576,7 +599,7 @@ export class BoleSdkServer {
           cwd,
           ...(composition.agentPreset === undefined ? {} : { agentPreset: composition.agentPreset }),
         },
-        agentOptions: this.agentOptions(),
+        agentOptions: this.agentOptions(options),
         ...(composition.setup === undefined ? {} : { setup: composition.setup }),
       })
     } catch (error) {
@@ -586,7 +609,13 @@ export class BoleSdkServer {
       if (isPresetFailure(error)) throw presetError(error)
       throw business('INTERNAL', `session "${sessionId}" could not be created: ${error instanceof Error ? error.message : String(error)}`)
     }
-    const record: SessionRecord = { handle, preset: composition.agentPreset, cwd }
+    const record: SessionRecord = {
+      handle,
+      preset: composition.agentPreset,
+      cwd,
+      ...(options.reasoningEffort === undefined ? {} : { reasoningEffort: options.reasoningEffort }),
+      ...(options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens }),
+    }
     this.sessions.set(sessionId, record)
     this.projections.set(sessionId, {
       turn: 0,
@@ -708,12 +737,14 @@ export class BoleSdkServer {
     return { sessionId, preset: record.preset ?? '', cwd: record.cwd }
   }
 
-  private agentOptions(): AgentOptions {
+  private agentOptions(overrides: { reasoningEffort?: ReturnType<typeof ReasoningEffortId>; maxTokens?: number } = {}): AgentOptions {
+    const reasoningEffort = overrides.reasoningEffort ?? this.reasoningEffort
+    const maxTokens = overrides.maxTokens ?? this.maxTokens
     return {
       provider: this.provider,
       model: this.model,
-      ...(this.reasoningEffort === undefined ? {} : { reasoningEffort: this.reasoningEffort }),
-      ...(this.maxTokens === undefined ? {} : { maxTokens: this.maxTokens }),
+      ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
+      ...(maxTokens === undefined ? {} : { maxTokens }),
     }
   }
 

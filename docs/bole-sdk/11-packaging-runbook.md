@@ -138,8 +138,9 @@ Select-String "baseURL" <out>\bole-agent-sdk-win-x64\runtime\cordis.patch.yml
 Select-String "enable_thinking" <out>\bole-agent-sdk-win-x64\runtime\cordis.patch.yml
 ```
 
-期望 `baseURL` 是真实网关；qwen 条目带 `reasoningEfforts` 和
-`chatTemplateKwargs.enable_thinking: false`（F13）。
+期望 `baseURL` 是真实网关；125B 条目带 `reasoningEfforts`、`supportsDeveloperRole: false`、
+`thinkingFormat: qwen`、`maxTokensField: max_tokens`。FNX 的强度值是 `low/medium/xhigh`，
+不支持 `high`，因此 `high` 映射到 `xhigh`。
 
 ## 七、生成哈希并交给测试
 

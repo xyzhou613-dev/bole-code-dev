@@ -117,6 +117,7 @@ int main(void) {
 - `bole_submit` 返回只表示消息已入队，不表示任务完成。
 - 终态由 `TASK_FINISHED` / `TASK_FAILED` 给出。
 - `model_name` 可传 `NULL`/空串，表示使用 `runtime/cordis.patch.yml` 的 `agent-default-model`；显式传模型 id 时以显式值为准。
+- 需要按会话切换推理强度/输出上限时，填 `bole_session_options.reasoning_effort` 和 `max_tokens`；`NULL`/`0` 继承 `bole_config`。
 - `bole_release` 会回收运行时和工具进程树；退出前必须调用。
 
 ## 4. 事件回调与 UI 线程

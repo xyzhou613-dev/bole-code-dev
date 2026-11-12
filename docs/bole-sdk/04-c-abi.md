@@ -13,7 +13,7 @@
 - 头文件自包含：只依赖 `<stdint.h>` / `<stddef.h>`。
 - 事件里的字符串与结构体内存归 SDK 所有，只在本次回调期间有效；调用方要保留必须自行拷贝。
 
-ABI 版本宏 `BOLE_ABI_VERSION = 0x00010000`（高 16 位主版本、低 16 位次版本）。
+ABI 版本宏 `BOLE_ABI_VERSION = 0x00010001`（高 16 位主版本、低 16 位次版本）。
 
 ## 二、类型与字段
 
@@ -22,7 +22,7 @@ ABI 版本宏 `BOLE_ABI_VERSION = 0x00010000`（高 16 位主版本、低 16 位
 | `bole_handle` | 运行时句柄，对应一个运行时进程 | 不透明指针 |
 | `bole_session` | 会话句柄，对应一个 agent / session id | 不透明指针 |
 | `bole_config` | 初始化配置，含 `size` 做向前兼容 | 值传递，调用方分配 |
-| `bole_session_options` | 建会话时的 cwd / preset 覆盖 | 值传递，可传 NULL |
+| `bole_session_options` | 建会话时的 cwd / preset / 推理强度 / 输出上限覆盖 | 值传递，可传 NULL |
 | `bole_event` | 事件信封 | 只在回调期间有效 |
 | `bole_event_cb` | `void (*)(void* user_data, const bole_event* event)` | 回调期间有效 |
 | `bole_rsi_state` | RSI 默认状态：`enabled`、`composed`、`preset[64]` | 值传递 |
@@ -52,6 +52,8 @@ ABI 版本宏 `BOLE_ABI_VERSION = 0x00010000`（高 16 位主版本、低 16 位
 | `size` | `sizeof(bole_session_options)` |
 | `cwd` | 绝对路径；NULL 用 `bole_config.cwd` |
 | `preset` | `standard` 或 `rsi-infer`；NULL 用当前默认 |
+| `reasoning_effort` | 可选；NULL 用 `bole_config.reasoning_effort` |
+| `max_tokens` | 可选；0 用 `bole_config.max_tokens` |
 
 ### `bole_event`
 
@@ -76,7 +78,7 @@ ABI 版本宏 `BOLE_ABI_VERSION = 0x00010000`（高 16 位主版本、低 16 位
 | `bole_wait_ready(handle, timeout_ms)` | 只等握手完成，不等模型或工具 | 调用方超时 | 禁止 | 2004、3001、3002 |
 | `bole_set_event_callback(handle, cb, user_data)` | 替换回调；已入队事件按新回调投递 | 否 | 允许 | 1002、1003 |
 | `bole_release(handle)` | 释放调用方引用；后台回收进程树，不阻塞 | 否 | 禁止 | 1002 |
-| `bole_session_create(handle, id, options, &session)` | 按 id 建会话，可覆盖 cwd / preset | 本地往返，5 秒 | 允许 | 1002、1004、2003、4002 |
+| `bole_session_create(handle, id, options, &session)` | 按 id 建会话，可覆盖 cwd / preset / reasoning_effort / max_tokens | 本地往返，5 秒 | 允许 | 1002、1004、2003、4002 |
 | `bole_session_resume(handle, id, &session)` | 恢复已持久化会话；preset 按日志恢复 | 本地往返，10 秒 | 允许 | 1002、2003、3006、4001、4004 |
 | `bole_session_set_preset(session, preset_id)` | 空白会话覆盖 preset；首个 turn 后锁定 | 本地往返，5 秒 | 允许 | 1002、1004、2003、4003 |
 | `bole_submit(session, utf8_text)` | 入队一条文本消息；turn 异步执行 | 本地入队往返，5 秒 | 允许 | 1002、2003、3002 |
