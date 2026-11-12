@@ -47,7 +47,7 @@ RSI 产品实现的权威参考是同仓库的 [RSI-infer 交接](../../bundle/w
 - A/B 两条线已合入 `develop`；C SDK、示例、离线打包脚本、验收脚本、四份交付文档均已落地。
 - 已用真实内网网关跑通 console、B8 自检、GUI；qwen `enable_thinking:false` 已抓包确认。
 - 干净目标 VM 由测试团队执行，使用 `packaging/acceptance.ps1`；开发机已完成等价演练。
-- **r7 final zip 已生成**：SHA256 `7aa149b40fdf185890ec5652bc2ba144fb6ef970c9e7a2e372f10024ff692fe2`；开发机 `acceptance.ps1` 已通过，待测试团队 clean VM 验收。
+- **r8 final zip 已生成**：SHA256 `40606b42abd15a2896f31c24574ef001aa1dbab78a783670cc10f3144cb84956`；ABI 1.1，支持按会话选择推理强度/输出上限，`install/verify` 已通过，待测试团队 clean VM 验收。
 - 验收口径以 [10-task-coverage.md](10-task-coverage.md) 为准；构建步骤见 [11-packaging-runbook.md](11-packaging-runbook.md)。
 - 两处既定限制：验证阶段（`VERIFY_CHECK`）暂缓；MCP v1 仅配置文件声明 + 重启，不支持运行时注册。
 

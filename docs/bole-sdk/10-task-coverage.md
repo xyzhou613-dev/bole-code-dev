@@ -6,7 +6,7 @@
 
 - **SDK、运行时、示例、离线打包脚本、四份交付文档**均已实现，A/B 两条线已合入 `develop`。
 - **真实内网网关**已跑通 console、B8 自检和 GUI；qwen `enable_thinking:false` 已抓包确认。
-- **最终交付 zip 已生成**：`bole-offline-r7-final.zip`，SHA256 `7aa149b40fdf185890ec5652bc2ba144fb6ef970c9e7a2e372f10024ff692fe2`；包含 toy MCP 0.2.0、acceptance、UTF-8/RSI/GUI 和 no-thinking 配置，开发机 `acceptance.ps1` 已通过。
+- **最终交付 zip 已生成**：`bole-offline-r8-final.zip`，SHA256 `40606b42abd15a2896f31c24574ef001aa1dbab78a783670cc10f3144cb84956`；包含 ABI 1.1、按会话的推理强度/输出上限、GUI Think/Max out 控件、125B FNX 兼容配置，`install/verify` 已通过。
 - **干净目标 VM 由测试团队执行**；`packaging/acceptance.ps1` 已提供一键验收，开发机已完成等价演练。
 - 有两处**按既有决定暂缓/限定的能力**，不是实现遗漏，但需要项目负责人确认验收口径：
   1. **验证阶段**：本基线没有 verify 类会话事件，`VERIFY_CHECK(40)` 保留定义但永不产生；不得伪造。
@@ -19,7 +19,7 @@
 | 交付物 | 状态 | 证据/说明 |
 | --- | --- | --- |
 | SDK 库（DLL + 头文件 + 导入库 + 依赖清单） | 完成 | MSVC 2022 x64 `/MT`；`bole_agent.dll/.lib/.h`；DLL 仅依赖 `KERNEL32.dll`；`VERSION.json` 记录版本 |
-| 离线部署包 | 完成 | r7 final zip 已生成；`build-offline.ps1`、`install.ps1`、`verify.ps1`、`acceptance.ps1`；开发机走通 install→verify→C2→selfcheck→GUI |
+| 离线部署包 | 完成 | r8 final zip 已生成；`build-offline.ps1`、`install.ps1`、`verify.ps1`、`acceptance.ps1`；开发机走通 install→verify→C2→selfcheck→GUI |
 | 控制台示例 | 完成 | `examples/console-c`；自动路径、`--rsi`、唯一 session、UTF-8 argv |
 | 界面示例 | 完成 | `examples/gui-win32`；双击自动路径、多轮、日志追加、RSI 复选框、取消、背景重绘修复 |
 | 四份文档 | 完成，待最终包内核对 | `docs/delivery/01-04`；B7 内容已落地；最终包需按测试团队反馈复核 |
@@ -88,9 +88,9 @@
 
 ## 五、结论与建议
 
-实现层面已经具备交付条件；**r7 final zip 已生成**。第 1/2/4 条的目标机与独立集成复现仍由测试团队在干净 VM 完成（GUI 长任务/取消已在开发机通过，测试复跑留证）。建议：
+实现层面已经具备交付条件；**r8 final zip 已生成**。第 1/2/4 条的目标机与独立集成复现仍由测试团队在干净 VM 完成（GUI 长任务/取消已在开发机通过，测试复跑留证）。建议：
 
-1. 把 r7 final zip + SHA256 交给测试；
+1. 把 r8 final zip + SHA256 交给测试；
 2. 测试团队跑 `acceptance.ps1` + GUI 长任务/取消 + 独立集成 + Win10（如适用）；
 3. 通过后再决定正式交付 tag。
 
@@ -105,7 +105,7 @@
 - 07-offline-package：打包步骤改为指向 11，`selfcheck.ps1` 改为实际的 `verify.ps1` + `bole_selfcheck.exe`，trace 路径改写；
 - delivery/README：四份文档状态更新为“已完成、待最终包内核对/测试验收”；
 - delivery/03：修正 `VERSION.json` 的 `experience` 形状（name/version，而不是按模型 keyed 的对象），修正 selfcheck 日志/ stdout 与 trace 路径；
-- packaging/README：修正目录树（`home/` 与 `runtime/` 分离）、`verify.ps1` 描述、玩具工具数量与“r7 final 已交付”的状态；
+- packaging/README：修正目录树（`home/` 与 `runtime/` 分离）、`verify.ps1` 描述、玩具工具数量与“r8 final 已交付”的状态；
 - 新增 11：构建机前置、MSVC/CMake 命令、tarball、运行时树、build-offline、哈希、干净 VM acceptance、常见坑和发布动作。
 
 仍未由我方完成、需测试/负责人确认：

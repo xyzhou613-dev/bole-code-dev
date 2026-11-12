@@ -40,5 +40,5 @@ bole-agent-sdk-win-x64/
 `bole_agent.dll/.lib`；`build-offline.ps1 → install.ps1 → verify.ps1 → acceptance.ps1`
 在开发机全过（真实网关，acceptance 含 console C2、B8 selfcheck、GUI 启动、进程检查）。
 MSVC `ctest` 的 json/error/platform/fixtures 4/4 通过；toy MCP 12 个工具。
-r7 final zip 已生成，SHA256 `7aa149b40fdf185890ec5652bc2ba144fb6ef970c9e7a2e372f10024ff692fe2`；开发机 acceptance 已通过，待测试团队 clean VM 验收。完整构建步骤见 [11-packaging-runbook](../docs/bole-sdk/11-packaging-runbook.md)。
+r8 final zip 已生成，SHA256 `40606b42abd15a2896f31c24574ef001aa1dbab78a783670cc10f3144cb84956`；ABI 1.1、GUI 思考强度/输出上限，install/verify 已通过，待测试团队 clean VM 验收。完整构建步骤见 [11-packaging-runbook](../docs/bole-sdk/11-packaging-runbook.md)。
 
