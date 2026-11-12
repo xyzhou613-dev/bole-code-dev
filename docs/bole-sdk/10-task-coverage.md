@@ -6,7 +6,7 @@
 
 - **SDK、运行时、示例、离线打包脚本、四份交付文档**均已实现，A/B 两条线已合入 `develop`。
 - **真实内网网关**已跑通 console、B8 自检和 GUI；qwen `enable_thinking:false` 已抓包确认。
-- **最终交付 zip 已生成**：`bole-offline-r8-final.zip`，SHA256 `40606b42abd15a2896f31c24574ef001aa1dbab78a783670cc10f3144cb84956`；包含 ABI 1.1、按会话的推理强度/输出上限、GUI Think/Max out 控件、125B FNX 兼容配置，`install/verify` 已通过。
+- **最终交付 zip 已生成**：`bole-offline-r8-final.zip`，SHA256 `96e196b4fb3316cb409274534c0d248496a19b6fe6d870b50fbcbfed5c6f1baa`；包含 ABI 1.1、按会话的推理强度/输出上限、GUI Think/Max out 控件、125B FNX 兼容配置，`install/verify` 已通过。
 - **干净目标 VM 由测试团队执行**；`packaging/acceptance.ps1` 已提供一键验收，开发机已完成等价演练。
 - 有两处**按既有决定暂缓/限定的能力**，不是实现遗漏，但需要项目负责人确认验收口径：
   1. **验证阶段**：本基线没有 verify 类会话事件，`VERIFY_CHECK(40)` 保留定义但永不产生；不得伪造。

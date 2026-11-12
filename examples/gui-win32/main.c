@@ -660,7 +660,7 @@ static DWORD WINAPI worker(LPVOID param) {
     bole_session_options options;
     memset(&options, 0, sizeof(options));
     options.size = sizeof(options);
-    options.reasoning_effort = g_reasoning_effort;
+    options.reasoning_effort = g_reasoning_effort[0] != '\0' ? g_reasoning_effort : NULL;
     options.max_tokens = g_max_tokens;
     if (bole_session_create(g_handle, g_session_id, &options, &g_session) != 0) {
       post_text(hwnd, ID_STATUS, "session create failed");
